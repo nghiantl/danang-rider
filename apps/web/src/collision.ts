@@ -16,10 +16,11 @@ export function getBuildings() {
 }
 export const BUILDINGS = getBuildings();
 
-export function collidesWithBuildings(x: number, z: number, radius: number = RIDER_RADIUS) {
-  for (const b of BUILDINGS) {
-    const nearestX = Math.max(b.x - BUILDING_HALF_SIZE, Math.min(x, b.x + BUILDING_HALF_SIZE));
-    const nearestZ = Math.max(b.z - BUILDING_HALF_SIZE, Math.min(z, b.z + BUILDING_HALF_SIZE));
+export type Obstacle = { x:number; z:number; halfX:number; halfZ:number };
+export function collidesWithBuildings(x: number, z: number, radius: number = RIDER_RADIUS, obstacles?: Obstacle[]) {
+  for (const b of (obstacles || BUILDINGS.map(v=>({...v,halfX:BUILDING_HALF_SIZE,halfZ:BUILDING_HALF_SIZE})))) {
+    const nearestX = Math.max(b.x - b.halfX, Math.min(x, b.x + b.halfX));
+    const nearestZ = Math.max(b.z - b.halfZ, Math.min(z, b.z + b.halfZ));
     if ((x - nearestX) ** 2 + (z - nearestZ) ** 2 < radius ** 2) return true;
   }
   return false;
@@ -27,7 +28,7 @@ export function collidesWithBuildings(x: number, z: number, radius: number = RID
 
 // Move in small increments to avoid tunnelling at high speed.
 // Resolve each axis independently to allow natural wall sliding.
-export function moveWithBuildingCollision(x: number, z: number, dx: number, dz: number, radius: number = RIDER_RADIUS) {
+export function moveWithBuildingCollision(x: number, z: number, dx: number, dz: number, radius: number = RIDER_RADIUS, obstacles?: Obstacle[]) {
   let nextX = x;
   let nextZ = z;
   const steps = Math.max(1, Math.ceil(Math.hypot(dx, dz) / Math.max(radius * 0.5, 0.1)));
@@ -36,10 +37,10 @@ export function moveWithBuildingCollision(x: number, z: number, dx: number, dz: 
   let blocked = false;
   for (let i = 0; i < steps; i++) {
     const candidateX = Math.max(-WORLD_LIMIT, Math.min(WORLD_LIMIT, nextX + stepX));
-    if (!collidesWithBuildings(candidateX, nextZ, radius)) nextX = candidateX;
+    if (!collidesWithBuildings(candidateX, nextZ, radius, obstacles)) nextX = candidateX;
     else blocked = true;
     const candidateZ = Math.max(-WORLD_LIMIT, Math.min(WORLD_LIMIT, nextZ + stepZ));
-    if (!collidesWithBuildings(nextX, candidateZ, radius)) nextZ = candidateZ;
+    if (!collidesWithBuildings(nextX, candidateZ, radius, obstacles)) nextZ = candidateZ;
     else blocked = true;
   }
   return { x: nextX, z: nextZ, blocked };

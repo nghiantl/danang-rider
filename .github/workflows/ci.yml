@@ -37,6 +37,9 @@ jobs:
       - name: Test building collision
         run: node --experimental-strip-types --test apps/web/src/collision.test.mjs
 
+      - name: Test OSM map and navigation geometry
+        run: node --experimental-strip-types --test apps/web/src/osm.test.mjs
+
       - name: Typecheck and build Web 3D
         run: npm run build
 
