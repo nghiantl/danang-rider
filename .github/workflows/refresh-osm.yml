@@ -12,6 +12,8 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
+      - name: Test official OSM XML converter
+        run: node --test scripts/update-osm.test.mjs
       - name: Download real OSM roads and buildings
         run: node scripts/update-osm.mjs
       - name: Commit refreshed map data
