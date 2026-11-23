@@ -33,7 +33,7 @@ export function parseOSM(elements: Element[]): OSMMap {
     }
   }
   // Choose targets along the actual road network, not inside building footprints.
-  const roadPoints = roads.flatMap(r=>r.points).filter(p=>Math.abs(p.x)<160&&Math.abs(p.z)<160);
+  const roadPoints = roads.flatMap(r=>r.points).filter(p=>Math.abs(p.x)<155&&Math.abs(p.z)<155&&!buildings.some(b=>Math.abs(p.x-b.x)<b.halfX+2&&Math.abs(p.z-b.z)<b.halfZ+2));
   if (roadPoints.length < 3) throw new Error('OSM roads insufficient for gameplay');
   const spawn=roadPoints.reduce((a,b)=>Math.hypot(a.x,a.z)<Math.hypot(b.x,b.z)?a:b);
   const pickup=roadPoints.reduce((a,b)=>Math.hypot(a.x-spawn.x,a.z-spawn.z)>Math.hypot(b.x-spawn.x,b.z-spawn.z)?a:b);
