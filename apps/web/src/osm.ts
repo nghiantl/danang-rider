@@ -47,7 +47,19 @@ export const OVERPASS_ENDPOINTS = [
   'https://overpass.nchc.org.tw/api/interpreter',
   'https://overpass-api.de/api/interpreter'
 ];
+export async function loadBundledDaNangMap(signal?: AbortSignal): Promise<OSMMap> {
+  // The file is generated from real OSM data by scripts/update-osm.mjs.
+  // Never treat an empty or missing snapshot as a valid city.
+  const response=await fetch(import.meta.env.BASE_URL+'data/danang-osm.json',{signal,cache:'default'});
+  if(!response.ok)throw new Error('OSM snapshot HTTP '+response.status);
+  const data: {elements?:Element[]}=await response.json();
+  return parseOSM(data.elements||[]);
+}
 export async function loadDaNangMap(signal?: AbortSignal): Promise<OSMMap> {
+  try { return await loadBundledDaNangMap(signal); } catch(error) {
+    if(signal?.aborted)throw error;
+    console.warn('[DaNang Rider] Bundled OSM unavailable; trying public servers',error);
+  }
   const query='[out:json][timeout:20];(way[highway~"^(primary|secondary|tertiary|residential|service|living_street|unclassified|pedestrian)$"]('+BBOX+');way[building]('+BBOX+'););out geom;';
   const errors: string[]=[];
   for(const endpoint of OVERPASS_ENDPOINTS) {
