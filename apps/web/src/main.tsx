@@ -27,14 +27,28 @@ function Building({ x, z, index }: {x:number; z:number; index:number}) {
     </group>)}
   </group>;
 }
+function OSMBuilding({b,index}:{b:OSMMap['buildings'][number];index:number}) {
+  const width=Math.max(2,b.halfX*2),depth=Math.max(2,b.halfZ*2),floors=Math.max(1,Math.min(12,Math.floor(b.height/3.3)));
+  const facade=['#f1e5ce','#e4d4c5','#d4dfdf','#c9d5e0','#e4c8b8'][index%5];
+  const windowRows=Array.from({length:floors},(_,i)=>i);
+  return <group position={[b.x,0,b.z]}>
+    <mesh position={[0,b.height/2,0]}><boxGeometry args={[width,b.height,depth]}/><meshStandardMaterial color={facade} roughness={0.85}/></mesh>
+    <mesh position={[0,b.height+0.3,0]}><boxGeometry args={[width+0.55,0.6,depth+0.55]}/><meshStandardMaterial color="#6d7983" roughness={0.8}/></mesh>
+    {windowRows.map(f=><group key={f} position={[0,2.2+f*3.3,0]}>
+      <mesh position={[0,0,depth/2+0.025]}><planeGeometry args={[Math.max(0.8,width*0.64),1.5]}/><meshStandardMaterial color={f%3===0?'#88b8c8':'#526f81'} metalness={0.25} roughness={0.35}/></mesh>
+      <mesh position={[width/2+0.025,0,0]} rotation={[0,Math.PI/2,0]}><planeGeometry args={[Math.max(0.8,depth*0.64),1.5]}/><meshStandardMaterial color="#688c9e" metalness={0.2} roughness={0.4}/></mesh>
+    </group>)}
+    <mesh position={[0,1.25,depth/2+0.035]}><planeGeometry args={[Math.min(width*0.55,3),2.3]}/><meshStandardMaterial color="#465c63"/></mesh>
+  </group>;
+}
 function City({map}:{map:OSMMap|null}) {
   if(map)return <group>
-    <mesh rotation={[-Math.PI/2,0,0]} receiveShadow><planeGeometry args={[500,500]}/><meshStandardMaterial color="#7eab87"/></mesh>
+    <mesh rotation={[-Math.PI/2,0,0]} receiveShadow><planeGeometry args={[map.extent*2+150,map.extent*2+150]}/><meshStandardMaterial color="#829c83"/></mesh>
     {map.roads.map((road,i)=>road.points.slice(1).map((p,j)=>{
       const a=road.points[j],dx=p.x-a.x,dz=p.z-a.z,length=Math.hypot(dx,dz);
       return <mesh key={`${i}:${j}`} rotation={[-Math.PI/2,0,-Math.atan2(dz,dx)]} position={[(a.x+p.x)/2,0.07,(a.z+p.z)/2]}><planeGeometry args={[length,road.width]}/><meshStandardMaterial color="#394750" side={THREE.DoubleSide}/></mesh>;
     }))}
-    {map.buildings.map((b,i)=><mesh key={i} position={[b.x,b.height/2,b.z]}><boxGeometry args={[b.halfX*2,b.height,b.halfZ*2]}/><meshStandardMaterial color={COLORS[i%COLORS.length]}/></mesh>)}
+    {map.buildings.map((b,i)=><OSMBuilding key={i} b={b} index={i}/>)}
     <Marker at={new THREE.Vector3(map.pickup.x,0,map.pickup.z)} color="#ffd45a" label="NHẬN HÀNG"/>
     <Marker at={new THREE.Vector3(map.delivery.x,0,map.delivery.z)} color="#42e3aa" label="GIAO HÀNG"/>
   </group>;
@@ -76,7 +90,7 @@ function Rider({vehicle,gender,inputs,onTick,map}:{vehicle:VehicleType;gender:Ge
    heading.current+=steer*dt*1.35*Math.min(1,Math.abs(velocity.current)/4);
    const dx=-Math.sin(heading.current)*velocity.current*dt;
    const dz=-Math.cos(heading.current)*velocity.current*dt;
-   const next=moveWithBuildingCollision(g.position.x,g.position.z,dx,dz,1.15,map?.buildings);
+   const next=moveWithBuildingCollision(g.position.x,g.position.z,dx,dz,1.15,map?.buildings,map?map.extent+15:185);
    distance.current+=Math.hypot(next.x-g.position.x,next.z-g.position.z);
    g.position.x=next.x;
    g.position.z=next.z;
@@ -100,8 +114,8 @@ function Rider({vehicle,gender,inputs,onTick,map}:{vehicle:VehicleType;gender:Ge
  </group>;
 }
 function Game({vehicle,gender,inputs,onTick,map}:{vehicle:VehicleType;gender:Gender;inputs:React.MutableRefObject<Record<InputKey,boolean>>;onTick:(s:Telemetry)=>void;map:OSMMap|null}){
- return <Canvas shadows={false} dpr={[1,1.5]} camera={{position:[0,9,5],fov:65,near:0.1,far:700}} gl={{antialias:true}}>
-  <color attach="background" args={['#a7d4e9']}/><fog attach="fog" args={['#a7d4e9',130,370]}/>
+ return <Canvas shadows={false} dpr={[1,1.5]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:true}}>
+  <color attach="background" args={['#a7d4e9']}/><fog attach="fog" args={['#a7d4e9',180,600]}/>
   <ambientLight intensity={1.8}/><directionalLight position={[80,140,50]} intensity={2}/>
   <City map={map}/><Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={onTick} map={map}/>
  </Canvas>;
@@ -127,7 +141,7 @@ function App(){
  const distanceTo=Math.hypot(telemetry.x-target.x,telemetry.z-target.z);
  const interact=()=>{if(stage==='pickup'&&distanceTo<10)setStage('dropoff');else if(stage==='dropoff'&&distanceTo<10){setStage('done');setWallet(w=>w+18000)}};
  const reset=()=>{setStage('pickup');setPhone(false);};
- if(!started)return <div className="menu"><div className="menu-card"><span className="eyebrow">SPRINT 02 · OSM MAP PREVIEW</span><h1>ĐÀ NẴNG<br/><em>RIDER</em></h1><p>Chạy xe, khám phá phố 3D và hoàn thành đơn giao hàng đầu tiên.</p><label>Nhân vật</label><div className="options"><button className={gender==='male'?'selected':''} onClick={()=>setGender('male')}>👨 Nam</button><button className={gender==='female'?'selected':''} onClick={()=>setGender('female')}>👩 Nữ</button></div><label>Phương tiện</label><div className="options"><button className={vehicle==='petrol'?'selected':''} onClick={()=>setVehicle('petrol')}>⛽ Xe xăng</button><button className={vehicle==='electric'?'selected':''} onClick={()=>setVehicle('electric')}>⚡ Xe điện</button></div><button className="primary" disabled={mapStatus==='loading'} onClick={()=>{setRemaining(initialFuel[vehicle]);setStarted(true)}}>BẮT ĐẦU CHẠY XE →</button><small>{mapStatus==='loading'?'Đang thử tải bản đồ OpenStreetMap…':mapStatus==='osm'?'Đường phố và công trình từ OpenStreetMap · khu vực trung tâm Đà Nẵng':'Không tải được OSM · dùng khu phố mẫu ngoại tuyến'}</small>{mapStatus==='fallback'&&<div className="map-error" role="status"><p>{mapError}</p><button onClick={()=>setMapAttempt(v=>v+1)}>THỬ TẢI OSM LẠI</button></div>}</div></div>;
+ if(!started)return <div className="menu"><div className="menu-card"><span className="eyebrow">SPRINT 02.2 · CITY VISUALS</span><h1>ĐÀ NẴNG<br/><em>RIDER</em></h1><p>Chạy xe, khám phá phố 3D và hoàn thành đơn giao hàng đầu tiên.</p><label>Nhân vật</label><div className="options"><button className={gender==='male'?'selected':''} onClick={()=>setGender('male')}>👨 Nam</button><button className={gender==='female'?'selected':''} onClick={()=>setGender('female')}>👩 Nữ</button></div><label>Phương tiện</label><div className="options"><button className={vehicle==='petrol'?'selected':''} onClick={()=>setVehicle('petrol')}>⛽ Xe xăng</button><button className={vehicle==='electric'?'selected':''} onClick={()=>setVehicle('electric')}>⚡ Xe điện</button></div><button className="primary" disabled={mapStatus==='loading'} onClick={()=>{setRemaining(initialFuel[vehicle]);setStarted(true)}}>BẮT ĐẦU CHẠY XE →</button><small>{mapStatus==='loading'?'Đang thử tải bản đồ OpenStreetMap…':mapStatus==='osm'?'Đường phố và công trình từ OpenStreetMap · khu vực trung tâm Đà Nẵng':'Không tải được OSM · dùng khu phố mẫu ngoại tuyến'}</small>{mapStatus==='fallback'&&<div className="map-error" role="status"><p>{mapError}</p><button onClick={()=>setMapAttempt(v=>v+1)}>THỬ TẢI OSM LẠI</button></div>}</div></div>;
  return <div className="game"><Game vehicle={vehicle} gender={gender} inputs={inputs} onTick={update} map={map}/><div className="topbar"><div className="brand">ĐÀ NẴNG <b>RIDER</b><small>{map?'SPRINT 02 · OSM ĐÀ NẴNG':'SPRINT 02 · KHU PHỐ DỰ PHÒNG'}</small></div><div className="wallet">💰 {fmt(wallet)}đ</div></div><div className="mission"><b>{stage==='pickup'?'📦 ĐẾN ĐIỂM NHẬN HÀNG':stage==='dropoff'?'🛵 GIAO HÀNG CHO KHÁCH':'🎉 HOÀN THÀNH ĐƠN!'}</b><span>{stage==='done'?'Đã nhận 18.000đ':`Còn ${Math.round(distanceTo)} m · Đơn #DN-001`}</span>{stage!=='done'&&distanceTo<10&&<button onClick={interact}>{stage==='pickup'?'NHẬN HÀNG':'GIAO HÀNG'}</button>}{stage==='done'&&<button onClick={reset}>CHẠY LẠI ĐƠN</button>}</div><div className="navigation"><b>🧭 {stage==='done'?'Đã hoàn tất': 'Hướng đến '+(stage==='pickup'?'điểm nhận':'điểm giao')}</b><span>{stage==='done'?'✓':Math.round((Math.atan2(-(target.x-telemetry.x),-(target.z-telemetry.z))-telemetry.heading)*180/Math.PI+720)%360}° · {Math.round(distanceTo)}m</span></div><div className="stats"><strong>{Math.round(telemetry.speed)} <small>km/h</small></strong><span>{vehicle==='petrol'?'⛽ '+remaining.toFixed(2)+' lít':'⚡ '+remaining.toFixed(1)+'%'}</span><span>Đã chạy {(telemetry.distance/1000).toFixed(2)} km</span></div><button className="phone-toggle" onClick={()=>setPhone(p=>!p)}>📱</button>{phone&&<div className="phone"><h3>RIDER PHONE</h3><p>📦 Đơn #DN-001</p><p>📍 {stage==='pickup'?'Đến điểm lấy hàng':stage==='dropoff'?'Đến điểm giao hàng':'Đã giao hàng thành công'}</p><p>📏 {stage==='done'?'Hoàn tất':Math.round(distanceTo)+' m'}</p><p>💵 Cước 18.000đ</p><button onClick={()=>setPhone(false)}>Đóng</button></div>}<div className="controls left"><Touch keyName="left" inputs={inputs}>◀</Touch><Touch keyName="right" inputs={inputs}>▶</Touch></div><div className="controls right"><Touch keyName="back" inputs={inputs}>PHANH</Touch><Touch keyName="forward" inputs={inputs}>GA</Touch></div><div className="help">WASD / phím mũi tên · Tab mở điện thoại · đến gần cột sáng để tương tác</div></div>;
 }
 function Touch({keyName,inputs,children}:{keyName:InputKey;inputs:React.MutableRefObject<Record<InputKey,boolean>>;children:React.ReactNode}){return <button className="touch" onPointerDown={e=>{e.currentTarget.setPointerCapture(e.pointerId);inputs.current[keyName]=true}} onPointerUp={()=>inputs.current[keyName]=false} onPointerCancel={()=>inputs.current[keyName]=false} onLostPointerCapture={()=>inputs.current[keyName]=false}>{children}</button>}
