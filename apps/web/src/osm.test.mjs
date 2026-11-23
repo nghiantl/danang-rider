@@ -18,7 +18,7 @@ test('OSM road and building geometry can be parsed and collided with', () => {
   const map=parseOSM(elements);
   assert.equal(map.roads.length,2);
   assert.equal(map.buildings.length,1);
-  assert.equal(map.buildings[0].height,9.9);
+  assert.ok(Math.abs(map.buildings[0].height - 9.9) < 1e-9, 'building height should be approximately 9.9m');
   const moved=moveWithBuildingCollision(-20,20,40,0,1.15,map.buildings);
   assert.equal(moved.blocked,true);
   assert.ok(moved.x<0);
