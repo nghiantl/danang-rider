@@ -3,14 +3,14 @@ import { createRoot } from 'react-dom/client';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
+import { BUILDINGS, moveWithBuildingCollision } from './collision';
 
 type VehicleType = 'petrol' | 'electric';
 type Gender = 'male' | 'female';
 type InputKey = 'forward' | 'back' | 'left' | 'right';
 const initialFuel = { petrol: 4, electric: 100 };
-const WORLD_LIMIT = 185;
-const DELIVERY = new THREE.Vector3(110, 0, -100);
-const PICKUP = new THREE.Vector3(-90, 0, 80);
+const DELIVERY = new THREE.Vector3(140, 0, -100);
+const PICKUP = new THREE.Vector3(-20, 0, 80);
 const COLORS = ['#e9d5a4', '#d9c8aa', '#b9c7c0', '#b0bac5', '#e0bba9'];
 
 function Building({ x, z, index }: {x:number; z:number; index:number}) {
@@ -27,11 +27,6 @@ function Building({ x, z, index }: {x:number; z:number; index:number}) {
   </group>;
 }
 function City() {
-  const buildings = [];
-  for(let x=-160;x<=160;x+=40) for(let z=-160;z<=160;z+=40){
-    if(Math.abs(x)<20 || Math.abs(z)<20 || (x===80 && z===80)) continue;
-    buildings.push({x,z,index:buildings.length});
-  }
   return <group>
     <mesh rotation={[-Math.PI/2,0,0]} receiveShadow><planeGeometry args={[500,500]}/><meshStandardMaterial color="#6d977d"/></mesh>
     {[-180,-20,140].map((x,i)=><group key={'v'+i}>
@@ -42,7 +37,7 @@ function City() {
       <mesh rotation={[-Math.PI/2,0,0]} position={[0,0.05,z]} receiveShadow><planeGeometry args={[420,22]}/><meshStandardMaterial color="#384450"/></mesh>
       {Array.from({length:18},(_,j)=><mesh key={j} rotation={[-Math.PI/2,0,0]} position={[-190+j*22,0.08,z]}><planeGeometry args={[8,0.25]}/><meshBasicMaterial color="#e7d8a5"/></mesh>)}
     </group>)}
-    {buildings.map(b=><Building key={`${b.x}:${b.z}`} {...b}/>)}
+    {BUILDINGS.map(b=><Building key={`${b.x}:${b.z}`} {...b}/>)}
     {Array.from({length:28},(_,i)=>{const x=-160+(i%7)*48,z=-150+Math.floor(i/7)*95;return <group key={i} position={[x,0,z]}>
       <mesh position={[0,3,0]}><cylinderGeometry args={[0.35,0.5,6,7]}/><meshStandardMaterial color="#745840"/></mesh>
       <mesh position={[0,7,0]}><coneGeometry args={[3.7,9,7]}/><meshStandardMaterial color="#287a56"/></mesh>
@@ -70,11 +65,11 @@ function Rider({vehicle,gender,inputs,onTick}:{vehicle:VehicleType;gender:Gender
    heading.current+=steer*dt*1.35*Math.min(1,Math.abs(velocity.current)/4);
    const dx=-Math.sin(heading.current)*velocity.current*dt;
    const dz=-Math.cos(heading.current)*velocity.current*dt;
-   const nextX=THREE.MathUtils.clamp(g.position.x+dx,-WORLD_LIMIT,WORLD_LIMIT);
-   const nextZ=THREE.MathUtils.clamp(g.position.z+dz,-WORLD_LIMIT,WORLD_LIMIT);
-   distance.current+=Math.hypot(nextX-g.position.x,nextZ-g.position.z);
-   g.position.x=nextX;
-   g.position.z=nextZ;
+   const next=moveWithBuildingCollision(g.position.x,g.position.z,dx,dz);
+   distance.current+=Math.hypot(next.x-g.position.x,next.z-g.position.z);
+   g.position.x=next.x;
+   g.position.z=next.z;
+   if(next.blocked && Math.hypot(next.x-g.position.x-dx,next.z-g.position.z-dz)>0.01) velocity.current=0;
    g.rotation.y=heading.current;
    const behind=new THREE.Vector3(g.position.x+Math.sin(heading.current)*12,9,g.position.z+Math.cos(heading.current)*12);
    camTarget.current.lerp(behind,Math.min(1,dt*5));camera.position.copy(camTarget.current);
