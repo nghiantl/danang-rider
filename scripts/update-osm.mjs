@@ -2,7 +2,8 @@
 // OSM API map bbox order is: min longitude, min latitude, max longitude, max latitude.
 // This is an occasional manually triggered export, NOT a live gameplay request.
 import { mkdir, writeFile } from 'node:fs/promises';
-const bbox='108.2191,16.0662,108.2225,16.0694';
+// Approximately 1.2 km x 1.2 km around the original downtown center.
+const bbox='108.2152,16.0624,108.2264,16.0732';
 const url='https://api.openstreetmap.org/api/0.6/map?bbox='+bbox;
 const output='apps/web/public/data/danang-osm.json';
 const acceptedHighways=new Set(['primary','secondary','tertiary','residential','service','living_street','unclassified','pedestrian']);

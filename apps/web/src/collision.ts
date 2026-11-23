@@ -28,7 +28,7 @@ export function collidesWithBuildings(x: number, z: number, radius: number = RID
 
 // Move in small increments to avoid tunnelling at high speed.
 // Resolve each axis independently to allow natural wall sliding.
-export function moveWithBuildingCollision(x: number, z: number, dx: number, dz: number, radius: number = RIDER_RADIUS, obstacles?: Obstacle[]) {
+export function moveWithBuildingCollision(x: number, z: number, dx: number, dz: number, radius: number = RIDER_RADIUS, obstacles?: Obstacle[], worldLimit: number = WORLD_LIMIT) {
   let nextX = x;
   let nextZ = z;
   const steps = Math.max(1, Math.ceil(Math.hypot(dx, dz) / Math.max(radius * 0.5, 0.1)));
@@ -36,10 +36,10 @@ export function moveWithBuildingCollision(x: number, z: number, dx: number, dz: 
   const stepZ = dz / steps;
   let blocked = false;
   for (let i = 0; i < steps; i++) {
-    const candidateX = Math.max(-WORLD_LIMIT, Math.min(WORLD_LIMIT, nextX + stepX));
+    const candidateX = Math.max(-worldLimit, Math.min(worldLimit, nextX + stepX));
     if (!collidesWithBuildings(candidateX, nextZ, radius, obstacles)) nextX = candidateX;
     else blocked = true;
-    const candidateZ = Math.max(-WORLD_LIMIT, Math.min(WORLD_LIMIT, nextZ + stepZ));
+    const candidateZ = Math.max(-worldLimit, Math.min(worldLimit, nextZ + stepZ));
     if (!collidesWithBuildings(nextX, candidateZ, radius, obstacles)) nextZ = candidateZ;
     else blocked = true;
   }
