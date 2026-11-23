@@ -1,32 +1,74 @@
-// Generate a versioned static OSM snapshot for the browser from public Overpass.
-// Run: node scripts/update-osm.mjs
+// Download a small real Da Nang map extract from the official OSM API.
+// OSM API map bbox order is: min longitude, min latitude, max longitude, max latitude.
+// This is an occasional manually triggered export, NOT a live gameplay request.
 import { mkdir, writeFile } from 'node:fs/promises';
-const bbox='16.0662,108.2191,16.0694,108.2225';
-const query='[out:json][timeout:30];(way[highway~"^(primary|secondary|tertiary|residential|service|living_street|unclassified|pedestrian)$"]('+bbox+');way[building]('+bbox+'););out geom;';
-const endpoints=[
-  'https://overpass.kumi.systems/api/interpreter',
-  'https://overpass.nchc.org.tw/api/interpreter',
-  'https://overpass-api.de/api/interpreter'
-];
-const errors=[];
-for(const endpoint of endpoints){
-  const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),45000);
-  try {
-    const response=await fetch(endpoint,{method:'POST',body:new URLSearchParams({data:query}),signal:controller.signal,headers:{Accept:'application/json'}});
-    if(!response.ok)throw Error('HTTP '+response.status);
-    const data=await response.json();
-    const ways=(data.elements||[]).filter(e=>e.type==='way'&&Array.isArray(e.geometry)&&e.geometry.length>=2);
-    const roads=ways.filter(e=>e.tags?.highway).length;
-    if(roads<3)throw Error('Too few roads: '+roads);
-    const out={elements:ways};
-    const path='apps/web/public/data/danang-osm.json';
-    await mkdir('apps/web/public/data',{recursive:true});
-    await writeFile(path,JSON.stringify(out));
-    console.log('Saved real OSM snapshot:',path,'roads:',roads,'buildings:',ways.length-roads,'source:',endpoint);
-    process.exit(0);
-  }catch(error){errors.push(endpoint+': '+String(error));console.warn('Overpass unavailable:',endpoint,String(error));}
-  finally{clearTimeout(timeout);}
+const bbox='108.2191,16.0662,108.2225,16.0694';
+const url='https://api.openstreetmap.org/api/0.6/map?bbox='+bbox;
+const output='apps/web/public/data/danang-osm.json';
+const acceptedHighways=new Set(['primary','secondary','tertiary','residential','service','living_street','unclassified','pedestrian']);
+function attributes(tag){
+  const out={};
+  for(const match of tag.matchAll(/([\w:-]+)="([^"]*)"/g))out[match[1]]=match[2];
+  return out;
 }
-console.error(errors.join('\n'));
-process.exit(1);
+function decodeEntities(value){
+  return value.replace(/&(?:amp|quot|apos|lt|gt|#\d+|#x[\da-f]+);/gi,entity=>{
+    const named={'&amp;':'&','&quot;':'"','&apos;':"'",'&lt;':'<','&gt;':'>'};
+    if(named[entity])return named[entity];
+    if(entity.startsWith('&#')) {
+      const hex=entity[2]?.toLowerCase()==='x';
+      const num=Number.parseInt(entity.slice(hex?3:2,-1),hex?16:10);
+      return Number.isFinite(num)&&num<=0x10ffff?String.fromCodePoint(num):entity;
+    }
+    return entity;
+  });
+}
+export function parseOsmXml(xml){
+  const nodes=new Map();
+  for(const match of xml.matchAll(/<node\b[^>]*\/?\s*>/g)){
+    const a=attributes(match[0]);
+    const lat=Number(a.lat),lon=Number(a.lon);
+    if(a.id&&Number.isFinite(lat)&&Number.isFinite(lon))nodes.set(a.id,{lat,lon});
+  }
+  const elements=[];
+  for(const match of xml.matchAll(/<way\b[^>]*>([\s\S]*?)<\/way>/g)){
+    const body=match[1],tags={};
+    for(const t of body.matchAll(/<tag\b[^>]*\/?\s*>/g)){
+      const a=attributes(t[0]);
+      if(a.k!==undefined&&a.v!==undefined)tags[decodeEntities(a.k)]=decodeEntities(a.v);
+    }
+    if(!tags.building&&!acceptedHighways.has(tags.highway))continue;
+    const geometry=[];
+    for(const nd of body.matchAll(/<nd\b[^>]*\/?\s*>/g)){
+      const ref=attributes(nd[0]).ref;
+      const point=nodes.get(ref);
+      if(point)geometry.push(point);
+    }
+    if(geometry.length>=2)elements.push({type:'way',tags,geometry});
+  }
+  return {elements};
+}
+export function validateSnapshot(data){
+  const roads=data.elements.filter(e=>acceptedHighways.has(e.tags.highway)).length;
+  const buildings=data.elements.filter(e=>Boolean(e.tags.building)).length;
+  if(roads<3)throw Error('Insufficient OSM roads: '+roads);
+  return {roads,buildings};
+}
+async function main(){
+  const controller=new AbortController();
+  const timer=setTimeout(()=>controller.abort(),60000);
+  try{
+    const response=await fetch(url,{signal:controller.signal,headers:{'User-Agent':'DaNangRiderOSMExporter/1.0 (https://github.com/nghiantl/danang-rider)','Accept':'application/xml'}});
+    if(!response.ok)throw Error('OSM official API HTTP '+response.status);
+    const xml=await response.text();
+    if(!xml.includes('<osm'))throw Error('OSM API returned unexpected content');
+    const data=parseOsmXml(xml);
+    const counts=validateSnapshot(data);
+    await mkdir('apps/web/public/data',{recursive:true});
+    await writeFile(output,JSON.stringify(data));
+    console.log('Saved verified OSM snapshot',output,counts,'source:',url);
+  }finally{clearTimeout(timer);}
+}
+if(process.argv[1]&&import.meta.url===new URL('file://'+process.argv[1]).href){
+  main().catch(error=>{console.error(error);process.exitCode=1;});
+}
