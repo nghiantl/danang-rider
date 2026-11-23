@@ -40,19 +40,39 @@ export function parseOSM(elements: Element[]): OSMMap {
   const delivery=roadPoints.reduce((a,b)=>Math.hypot(a.x-pickup.x,a.z-pickup.z)>Math.hypot(b.x-pickup.x,b.z-pickup.z)?a:b);
   return {roads,buildings,pickup,delivery,spawn};
 }
+// Try independent public Overpass instances. GET avoids POST preflight on mobile Safari.
+// Keep a short per-server timeout and report failures instead of silently hiding them.
+export const OVERPASS_ENDPOINTS = [
+  'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.nchc.org.tw/api/interpreter',
+  'https://overpass-api.de/api/interpreter'
+];
 export async function loadDaNangMap(signal?: AbortSignal): Promise<OSMMap> {
   const query='[out:json][timeout:20];(way[highway~"^(primary|secondary|tertiary|residential|service|living_street|unclassified|pedestrian)$"]('+BBOX+');way[building]('+BBOX+'););out geom;';
-  const controller=new AbortController();
-  const timeout=setTimeout(()=>controller.abort(),15000);
-  const abort=()=>controller.abort();
-  signal?.addEventListener('abort',abort,{once:true});
-  try {
-    const response=await fetch('https://overpass-api.de/api/interpreter',{method:'POST',body:new URLSearchParams({data:query}),signal:controller.signal});
-    if(!response.ok)throw new Error('OSM HTTP '+response.status);
-    const data: {elements?:Element[]}=await response.json();
-    return parseOSM(data.elements||[]);
-  } finally {
-    clearTimeout(timeout);
-    signal?.removeEventListener('abort',abort);
+  const errors: string[]=[];
+  for(const endpoint of OVERPASS_ENDPOINTS) {
+    if(signal?.aborted) throw new Error('OSM request cancelled');
+    const controller=new AbortController();
+    const abort=()=>controller.abort();
+    signal?.addEventListener('abort',abort,{once:true});
+    const timeout=setTimeout(()=>controller.abort(),12000);
+    try {
+      const url=endpoint+'?data='+encodeURIComponent(query);
+      const response=await fetch(url,{method:'GET',signal:controller.signal,headers:{Accept:'application/json'}});
+      if(!response.ok)throw new Error('HTTP '+response.status);
+      const data: {elements?:Element[]}=await response.json();
+      const map=parseOSM(data.elements||[]);
+      console.info('[DaNang Rider] OSM loaded from',endpoint,'roads:',map.roads.length,'buildings:',map.buildings.length);
+      return map;
+    } catch(error) {
+      if(signal?.aborted)throw new Error('OSM request cancelled');
+      const reason=error instanceof Error?error.message:String(error);
+      errors.push(new URL(endpoint).host+': '+reason);
+      console.warn('[DaNang Rider] OSM endpoint failed',endpoint,reason);
+    } finally {
+      clearTimeout(timeout);
+      signal?.removeEventListener('abort',abort);
+    }
   }
+  throw new Error('Không tải được OSM: '+errors.join(' | '));
 }
