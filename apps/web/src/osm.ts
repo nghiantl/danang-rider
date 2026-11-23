@@ -3,7 +3,7 @@
 export type Point = { x: number; z: number };
 export type Road = { points: Point[]; width: number; name: string };
 export type Footprint = { x: number; z: number; halfX: number; halfZ: number; height: number };
-export type OSMMap = { roads: Road[]; buildings: Footprint[]; pickup: Point; delivery: Point; spawn: Point };
+export type OSMMap = { roads: Road[]; buildings: Footprint[]; pickup: Point; delivery: Point; spawn: Point; extent: number };
 const CENTER_LAT = 16.0678;
 const CENTER_LON = 108.2208;
 const LAT_METERS = 111320;
@@ -33,12 +33,13 @@ export function parseOSM(elements: Element[]): OSMMap {
     }
   }
   // Choose targets along the actual road network, not inside building footprints.
-  const roadPoints = roads.flatMap(r=>r.points).filter(p=>Math.abs(p.x)<155&&Math.abs(p.z)<155&&!buildings.some(b=>Math.abs(p.x-b.x)<b.halfX+2&&Math.abs(p.z-b.z)<b.halfZ+2));
+  const extent = Math.max(200,...roads.flatMap(r=>r.points.map(p=>Math.max(Math.abs(p.x),Math.abs(p.z)))));
+  const roadPoints = roads.flatMap(r=>r.points).filter(p=>Math.abs(p.x)<extent-8&&Math.abs(p.z)<extent-8&&!buildings.some(b=>Math.abs(p.x-b.x)<b.halfX+2&&Math.abs(p.z-b.z)<b.halfZ+2));
   if (roadPoints.length < 3) throw new Error('OSM roads insufficient for gameplay');
   const spawn=roadPoints.reduce((a,b)=>Math.hypot(a.x,a.z)<Math.hypot(b.x,b.z)?a:b);
   const pickup=roadPoints.reduce((a,b)=>Math.hypot(a.x-spawn.x,a.z-spawn.z)>Math.hypot(b.x-spawn.x,b.z-spawn.z)?a:b);
   const delivery=roadPoints.reduce((a,b)=>Math.hypot(a.x-pickup.x,a.z-pickup.z)>Math.hypot(b.x-pickup.x,b.z-pickup.z)?a:b);
-  return {roads,buildings,pickup,delivery,spawn};
+  return {roads,buildings,pickup,delivery,spawn,extent};
 }
 // Try independent public Overpass instances. GET avoids POST preflight on mobile Safari.
 // Keep a short per-server timeout and report failures instead of silently hiding them.
