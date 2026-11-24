@@ -40,6 +40,9 @@ jobs:
       - name: Test OSM map and navigation geometry
         run: node --experimental-strip-types --test apps/web/src/osm.test.mjs
 
+      - name: Test world chunks
+        run: node --experimental-strip-types --test apps/web/src/world.test.mjs
+
       - name: Typecheck and build Web 3D
         run: npm run build
 
