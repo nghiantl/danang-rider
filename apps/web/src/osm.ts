@@ -2,7 +2,7 @@ import {buildGraph,missionPoints} from './navigation.ts';
 // Real OpenStreetMap geometry loaded at runtime; no API key required.
 // The area is deliberately small to keep iPhone rendering affordable.
 export type Point = { x: number; z: number };
-export type Road = { points: Point[]; width: number; name: string; kind?: string; oneway?: number };
+export type Road = { points: Point[]; width: number; name: string; kind?: string; oneway?: number; bridge?: boolean };
 export type Footprint = { x: number; z: number; halfX: number; halfZ: number; height: number; outline?: Point[]; kind?: string };
 export type OSMMap = { roads: Road[]; buildings: Footprint[]; pickup: Point; delivery: Point; spawn: Point; extent: number };
 const CENTER_LAT = 16.0678;
@@ -38,7 +38,7 @@ export function parseOSM(elements: Element[], bounds?:number[]): OSMMap {
     const points = element.geometry.map(p => project(p.lat,p.lon));
     if (element.tags?.highway && WIDTH[element.tags.highway]) {
       const runs:Point[][]=bounds?clipRoad(points,bounds):[points];
-      for(const points of runs)roads.push({ points, width: WIDTH[element.tags.highway], name: element.tags.name || 'Đường chưa có tên', kind:element.tags.highway, oneway:element.tags.oneway==='-1'?-1:element.tags.oneway==='no'?0:['yes','1','true'].includes(element.tags.oneway)||element.tags.junction==='roundabout'?1:0 });
+      for(const points of runs)roads.push({ points, width: WIDTH[element.tags.highway], name: element.tags.name || 'Đường chưa có tên', kind:element.tags.highway, bridge:!!element.tags.bridge&&element.tags.bridge!=='no', oneway:element.tags.oneway==='-1'?-1:element.tags.oneway==='no'?0:['yes','1','true'].includes(element.tags.oneway)||element.tags.junction==='roundabout'?1:0 });
     }
     if (element.tags?.building && points.length >= 3) {
       const xs=points.map(p=>p.x), zs=points.map(p=>p.z);
