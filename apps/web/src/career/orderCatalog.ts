@@ -1,0 +1,7 @@
+export const ORDER_TYPES={food:{label:'Đồ ăn',level:1,min:12000,max:35000,rate:500,base:12000,shop:'Quán mì Quảng',note:'Ưu tiên giao nhanh',size:1},parcel:{label:'Bưu kiện',level:1,min:15000,max:50000,rate:650,base:15000,shop:'Điểm gửi bưu kiện',note:'Giao thông thường',size:2},fragile:{label:'Hàng dễ vỡ',level:5,min:25000,max:65000,rate:800,base:25000,shop:'Cửa hàng gốm sứ',note:'Hạn chế va chạm',size:2},express:{label:'Hỏa tốc',level:10,min:35000,max:90000,rate:1000,base:35000,shop:'Điểm chuyển phát nhanh',note:'Ưu tiên thời gian',size:1},vip:{label:'VIP',level:20,min:50000,max:150000,rate:1500,base:50000,shop:'Cửa hàng cao cấp',note:'Dịch vụ cao cấp',size:2}} as const;
+export type OrderKind=keyof typeof ORDER_TYPES;
+export function isOrderKind(k:unknown):k is OrderKind{return typeof k==='string'&&Object.prototype.hasOwnProperty.call(ORDER_TYPES,k)}
+export function eligibleKinds(level:number):OrderKind[]{return (Object.keys(ORDER_TYPES) as OrderKind[]).filter(k=>level>=ORDER_TYPES[k].level)}
+export function orderFare(kind:OrderKind,meters:number){const c=ORDER_TYPES[kind];return Math.min(c.max,c.base+Math.ceil(Math.max(0,meters)/100)*c.rate)}
+export function kindFor(batch:number,index:number,level:number):OrderKind{const kinds=eligibleKinds(Math.max(1,level));return kinds[((batch+index)%kinds.length+kinds.length)%kinds.length]}
+export function suggestedMinutes(kind:OrderKind,meters:number){return Math.max(3,Math.ceil(meters/250)+(kind==='food'||kind==='express'?2:4))}
