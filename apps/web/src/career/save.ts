@@ -2,8 +2,9 @@ import type {Order,Income} from '../orders';
 import type {Point} from '../osm';
 import {advanceXP,levelFor,reward,threshold,MAX_LEVEL} from './progression.ts';
 import {isOrderKind,ORDER_TYPES} from './orderCatalog.ts';
+import {evaluate,startRun,type DeliveryRun,type DeliveryResult} from './deliveryRating.ts';
 export const KEY='danang-rider-career-v1';
-export type Career={version:1;name:string;created:string;xp:number;level:number;income:Income;vehicle:'petrol'|'electric';gender:'male'|'female';remaining:number;position:Point|null;stage:'pickup'|'dropoff'|'done';order:Order|null;batch:number;paid:string[];ledger:{id:string;amount:number;at:string}[];mapMode:'osm'|'fallback'|null};
+export type Career={version:1;run?:DeliveryRun|null;ratings?:DeliveryResult[];name:string;created:string;xp:number;level:number;income:Income;vehicle:'petrol'|'electric';gender:'male'|'female';remaining:number;position:Point|null;stage:'pickup'|'dropoff'|'done';order:Order|null;batch:number;paid:string[];ledger:{id:string;amount:number;at:string}[];mapMode:'osm'|'fallback'|null};
 const int=(n:unknown)=>typeof n==='number'&&Number.isSafeInteger(n)&&n>=0;
 const point=(p:any)=>p&&Number.isFinite(p.x)&&Number.isFinite(p.z)&&Math.abs(p.x)<=20000&&Math.abs(p.z)<=20000;
 export function parseCareer(raw:string):Career{
@@ -12,6 +13,9 @@ export function parseCareer(raw:string):Career{
  const o=v.order;if(o!==null&&(!o||typeof o.id!=='string'||typeof o.shop!=='string'||!point(o.pickup)||!point(o.delivery)||!int(o.fare)||!Number.isFinite(o.meters)||o.meters<0))throw Error('Đơn hàng không hợp lệ');
  if(o!==null&&o.kind!==undefined&&(!isOrderKind(o.kind)||o.size!==ORDER_TYPES[o.kind as keyof typeof ORDER_TYPES].size||!int(o.minutes)||o.minutes<1))throw Error('Loại đơn hàng không hợp lệ');
  if(v.stage!=='done'&&(!o||v.paid.includes(o.id)))throw Error('Trạng thái đơn không hợp lệ');
+ if(v.ratings!==undefined&&(!Array.isArray(v.ratings)||!v.ratings.every((r:any)=>r&&typeof r.id==='string'&&int(r.stars)&&r.stars>=1&&r.stars<=5&&typeof r.late==='boolean'&&int(r.condition)&&r.condition<=100&&int(r.tip)&&int(r.bonusXP))))throw Error('Đánh giá không hợp lệ');
+ if(v.run!=null&&(!o||v.run.id!==o.id||!int(v.run.deadline)||!int(v.run.condition)||v.run.condition>100))throw Error('Tiến trình giao hàng không hợp lệ');
+ if(v.stage!=='done'&&!v.run)v.run=startRun(o);
  v.xp=Math.min(v.xp,threshold(MAX_LEVEL));v.level=levelFor(v.xp);
  return v;
 }
@@ -22,6 +26,6 @@ export function newCareer(legacy:string|null):Career{
 }
 export function settle(c:Career,o:Order):Career{
  if(c.paid.includes(o.id))return c;
- const p=advanceXP(c.xp,o.meters),at=new Date().toISOString(),bonuses=p.levels.map(l=>({id:'LEVEL-'+l,amount:reward(l),at})).filter(t=>!c.ledger.some(e=>e.id===t.id));
- return {...c,xp:p.xp,level:p.level,stage:'done',income:{wallet:c.income.wallet+o.fare+bonuses.reduce((sum,t)=>sum+t.amount,0),completed:c.income.completed+1,meters:c.income.meters+Math.round(o.meters)},paid:[...c.paid,o.id],ledger:[...c.ledger,{id:o.id,amount:o.fare,at},...bonuses],batch:c.batch+1};
+ const result=c.run?.id===o.id?evaluate(o,c.run):null;const p=advanceXP(c.xp,o.meters,result?.bonusXP??0),at=new Date().toISOString(),bonuses=p.levels.map(l=>({id:'LEVEL-'+l,amount:reward(l),at})).filter(t=>!c.ledger.some(e=>e.id===t.id));
+ return {...c,run:null,...(result?{ratings:[...(c.ratings??[]),result]}:{}),xp:p.xp,level:p.level,stage:'done',income:{wallet:c.income.wallet+o.fare+(result?.tip??0)+bonuses.reduce((sum,t)=>sum+t.amount,0),completed:c.income.completed+1,meters:c.income.meters+Math.round(o.meters)},paid:[...c.paid,o.id],ledger:[...c.ledger,{id:o.id,amount:o.fare,at},...(result?.tip?[{id:'TIP-'+o.id,amount:result.tip,at}]:[]),...bonuses],batch:c.batch+1};
 }
