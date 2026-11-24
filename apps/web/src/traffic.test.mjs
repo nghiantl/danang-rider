@@ -9,4 +9,15 @@ test('dead end returns false',()=>{const l=lanesFor([road([a,b],1)]);assert.equa
 
 test('signal phases never give both axes green',()=>{const s={point:a,axis:0,phase:0};for(let t=0;t<52;t+=0.25)assert.ok(!(light(s,0,t)==='green'&&light(s,1,t)==='green'))});
 test('AI stops for player ahead and ignores player behind',()=>{const l=lanesFor([road([a,b],1)]),v={lane:0,t:5,speed:8,kind:0};assert.equal(desiredSpeed(v,l,[v],{x:-2,z:8},new Map(),0),0);assert.equal(desiredSpeed(v,l,[v],{x:-2,z:0},new Map(),0),8)});
-test('red signal stops AI before intersection',()=>{const l=lanesFor([road([a,b,c]),road([b,{x:-20,z:20}])]);const signals=signalsFor(l);assert.equal(signals.size,1);const v={lane:0,t:17,speed:8,kind:0};assert.equal(desiredSpeed(v,l,[v],{x:100,z:100},signals,0),0)});
+test('red and yellow stop AI before intersection; green releases it',()=>{
+ const l=lanesFor([road([a,b,c]),road([b,{x:-20,z:20}])]);
+ const signals=signalsFor(l);assert.equal(signals.size,1);
+ const signal=[...signals.values()][0];
+ const v={lane:0,t:17,speed:8,kind:0};
+ const axis=Math.abs(l[0].ux)>Math.abs(l[0].uz)?0:1;
+ for(const [phase,expected] of [[0,'green'],[10,'yellow'],[12,'red']]){
+  const time=(phase-signal.phase-axis*13+52)%26;
+  assert.equal(light(signal,axis,time),expected);
+  assert.equal(desiredSpeed(v,l,[v],{x:100,z:100},signals,time),expected==='green'?8:0);
+ }
+});
