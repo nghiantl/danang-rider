@@ -54,6 +54,9 @@ jobs:
       - name: Test environment
         run: node --experimental-strip-types --test apps/web/src/environment.test.mjs
 
+      - name: Test audio levels
+        run: node --experimental-strip-types --test apps/web/src/gameAudio.test.mjs
+
       - name: Typecheck and build Web 3D
         run: npm run build
 
