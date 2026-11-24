@@ -17,6 +17,7 @@ import { GPS } from './GPS';
 import { Traffic } from './Traffic';
 import { Pedestrians } from './Pedestrians';
 import { GameAudio } from './gameAudio';
+import { Landmarks } from './Landmarks';
 import { Environment } from './Environment';
 
 type VehicleType = 'petrol' | 'electric';
@@ -45,7 +46,7 @@ function City({map,world,position}:{map:OSMMap|null;world:Map<string,Chunk>;posi
   const active=useMemo(()=>nearby(world,cx*CHUNK_SIZE,cz*CHUNK_SIZE),[world,cx,cz]);
   if(map)return <group>
     <mesh rotation={[-Math.PI/2,0,0]} receiveShadow><planeGeometry args={[map.extent*2+150,map.extent*2+150]}/><meshStandardMaterial color="#a0a58c"/></mesh>
-    <CityDetail chunks={active}/>
+    <CityDetail chunks={active}/><Landmarks map={map} position={position}/>
     <Marker at={new THREE.Vector3(map.pickup.x,0,map.pickup.z)} color="#ffd45a" label="NHẬN HÀNG"/>
     <Marker at={new THREE.Vector3(map.delivery.x,0,map.delivery.z)} color="#42e3aa" label="GIAO HÀNG"/>
   </group>;
