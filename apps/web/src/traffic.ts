@@ -1,5 +1,5 @@
 import type {Road,Point} from './osm';
-export type Lane={a:Point;b:Point;length:number;ux:number;uz:number;offset:number;width:number;next:number[]};
+export type Lane={a:Point;b:Point;length:number;ux:number;uz:number;offset:number;width:number;next:number[];medianSetback?:number};
 export type Car={lane:number;t:number;speed:number;kind:number;cruise?:number};
 const key=(p:Point)=>p.x.toFixed(3)+':'+p.z.toFixed(3);
 export function lanesFor(roads:Road[]){
@@ -7,8 +7,25 @@ export function lanesFor(roads:Road[]){
  function add(a:Point,b:Point,width:number){const length=Math.hypot(b.x-a.x,b.z-a.z);if(length<0.1)return;const id=lanes.length;lanes.push({a,b,length,ux:(b.x-a.x)/length,uz:(b.z-a.z)/length,offset:Math.min(width/4,2),width,next:[]});const k=key(a);starts.set(k,[...(starts.get(k)||[]),id])}
  for(const r of roads){if(r.kind==='pedestrian')continue;for(let i=1;i<r.points.length;i++){if(r.oneway!==-1)add(r.points[i-1],r.points[i],r.width);if(r.oneway!==1)add(r.points[i],r.points[i-1],r.width)}}
  for(const l of lanes){const all=starts.get(key(l.b))||[];const forward=all.filter(i=>key(lanes[i].b)!==key(l.a));l.next=forward.length?forward:all}
+ // Only adjust approaches near a bridge with two distinct parallel carriageways.
+ const bridgePoints=roads.filter(r=>r.bridge).flatMap(r=>r.points);
+ const nearBridge=(p:Point)=>bridgePoints.some(b=>Math.hypot(b.x-p.x,b.z-p.z)<120);
+ const unique=lanes;
+ for(const l of lanes){
+ if(!nearBridge(l.b)||!signalsForCandidate(l,lanes))continue;
+ const parallel=unique.some(q=>{const dx=l.b.x-q.a.x,dz=l.b.z-q.a.z,t=dx*q.ux+dz*q.uz,side=Math.abs(-dx*q.uz+dz*q.ux);return Math.abs(l.ux*q.ux+l.uz*q.uz)>0.96&&t>=-12&&t<=q.length+12&&side>= (l.width+q.width)/2+0.5&&side< (l.width+q.width)/2+12});
+ if(!parallel)continue;
+ const base=crossingSetback(l,lanes);
+ const clear=(x:number,z:number)=>!unique.some(q=>{const dx=x-q.a.x,dz=z-q.a.z,t=dx*q.ux+dz*q.uz;return t>=0&&t<=q.length&&Math.abs(-dx*q.uz+dz*q.ux)<q.width/2+0.15});
+ for(let d=base;d<=Math.min(l.length-0.5,base+24);d+=0.5){
+ const x=l.b.x-l.ux*d,z=l.b.z-l.uz*d,side=l.width/2+0.7;
+ if([-1,1].every(sign=>[-1.25,0,1.25].every(k=>clear(x+l.ux*k-l.uz*side*sign,z+l.uz*k+l.ux*side*sign)))){l.medianSetback=d;break}
+ }
+ }
  return lanes;
 }
+function signalsForCandidate(l:Lane,lanes:Lane[]){const neighbors=new Set<string>();for(const q of lanes){if(key(q.a)===key(l.b))neighbors.add(key(q.b));if(key(q.b)===key(l.b))neighbors.add(key(q.a))}return neighbors.size===4}
+
 export function pose(l:Lane,t:number){return {x:l.a.x+l.ux*t-l.uz*l.offset,z:l.a.z+l.uz*t+l.ux*l.offset,heading:Math.atan2(l.ux,l.uz)}}
 export function advance(c:Car,lanes:Lane[],dt:number,random=Math.random){
  c.t+=c.speed*dt;
@@ -44,7 +61,7 @@ export function signalApproaches(lanes:Lane[],signals:Map<string,Signal>){
 }
 export function junctionRadius(l:Lane,lanes:Lane[]){return Math.max(5,l.width/2+1,...l.next.map(i=>lanes[i].width/2+1))}
 export const CROSSWALK_DEPTH=2.5;
-export function crossingSetback(l:Lane,lanes:Lane[]){return Math.min(l.length-0.5,junctionRadius(l,lanes)+CROSSWALK_DEPTH/2+0.5)}
+export function crossingSetback(l:Lane,lanes:Lane[]){return l.medianSetback??Math.min(l.length-0.5,junctionRadius(l,lanes)+CROSSWALK_DEPTH/2+0.5)}
 export function stopPosition(c:Car,l:Lane,lanes:Lane[]){return Math.max(0,l.length-crossingSetback(l,lanes)-CROSSWALK_DEPTH/2-(c.kind===1?1.8:0.825)-0.5)}
 export function insideJunction(l:Lane,t:number,lanes:Lane[],signals:Map<string,Signal>){return (signals.has(key(l.b))&&l.length-t<junctionRadius(l,lanes)+2)||(signals.has(key(l.a))&&t<Math.max(5,l.width/2+1)+2)}
 export function desiredSpeed(c:Car,lanes:Lane[],others:Car[],player:Point,signals:Map<string,Signal>,time:number,crossingPeople:Point[]=[]){
