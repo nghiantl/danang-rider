@@ -2,6 +2,7 @@ import {useMemo,useRef,useEffect} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
 import {signalState,signalApproaches,type Lane,type Signal} from './traffic';
+import type {EnvironmentCollider} from './environmentCollision';
 import type {Point} from './osm';
 type Approach=ReturnType<typeof signalApproaches>[number];
 const palette={red:'#ff3434',yellow:'#ffcf28',green:'#35ed67'};
@@ -27,7 +28,8 @@ function Pole({a,player}:{a:Approach;player:React.RefObject<Point>}){
  <mesh position={[0,4.04,0.121]}><planeGeometry args={[0.59,0.29]}/><meshBasicMaterial map={board.texture}/></mesh>
  </group>
 }
-export function SignalPoles({lanes,signals,player}:{lanes:Lane[];signals:Map<string,Signal>;player:React.RefObject<Point>}){
+export function SignalPoles({lanes,signals,player,signalColliders}:{signalColliders:React.RefObject<EnvironmentCollider[]>;lanes:Lane[];signals:Map<string,Signal>;player:React.RefObject<Point>}){
  const approaches=useMemo(()=>signalApproaches(lanes,signals),[lanes,signals]);
+ useEffect(()=>{signalColliders.current=approaches.map(a=>({x:a.x,z:a.z,radius:0.3,kind:'signal'}));return()=>{signalColliders.current=[]}},[approaches,signalColliders]);
  return <group>{approaches.map((a,i)=><Pole key={i} a={a} player={player}/>)}</group>
 }
