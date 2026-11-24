@@ -3,7 +3,7 @@ import {useMemo,useRef,useLayoutEffect} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
 import type {Road,Point} from './osm';
-import {lanesFor,pose,advance,signalsFor,desiredSpeed,type Car} from './traffic';
+import {lanesFor,pose,advance,signalsFor,desiredSpeed,insideJunction,type Car} from './traffic';
 import {SignalPoles} from './SignalPoles';
 const COUNT=20;
 export function Traffic({roads,player,vehicles}:{roads:Road[];player:React.RefObject<Point>;vehicles:React.RefObject<VehicleCollider[]>}){
@@ -27,7 +27,7 @@ export function Traffic({roads,player,vehicles}:{roads:Road[];player:React.RefOb
  const before=c?{...c}:null;
  if(c){const target=targets[i]??0;c.speed=Math.min(target,c.speed+3*dt);}
  if(!c||!q||Math.hypot(q.x-p.x,q.z-p.z)>240||!advance(c,lanes,dt)){
- const choices=local.filter(({l})=>{const q=pose(l,l.length/2);return Math.hypot(q.x-p.x,q.z-p.z)>30&&cars.current.every(other=>{if(!other)return true;const o=pose(lanes[other.lane],other.t);return Math.hypot(q.x-o.x,q.z-o.z)>8})});
+ const choices=local.filter(({l})=>{const q=pose(l,l.length/2);return !insideJunction(l,l.length/2,lanes,signals)&&Math.hypot(q.x-p.x,q.z-p.z)>30&&cars.current.every(other=>{if(!other)return true;const o=pose(lanes[other.lane],other.t);return Math.hypot(q.x-o.x,q.z-o.z)>8})});
  if(choices.length){const {l,i:id}=choices[Math.floor(Math.random()*choices.length)];c={lane:id,t:l.length/2,speed:0,cruise:5+Math.random()*5,kind:i%3===0?1:0};cars.current[i]=c;q=pose(l,c.t)}else{delete cars.current[i];q=null}
  }else {q=pose(lanes[c.lane],c.t);if(before&&penetration(p.x,p.z,1.15,vehicleCollider(q.x,q.z,q.heading,c.kind))>0){Object.assign(c,before);c.speed=0;q=pose(lanes[c.lane],c.t);}}
  if(!q){if(brakes.current)place(brakes.current,i,0,-100,0,0,0,0,0);place(body.current,i,0,-100,0,0,0,0,0);place(top.current,i,0,-100,0,0,0,0,0);for(let j=0;j<4;j++)place(wheels.current,i*4+j,0,-100,0,0,0,0,0);continue}
