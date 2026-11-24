@@ -35,3 +35,6 @@ test('unrecoverable building in road is omitted, including corridor containment'
 test('diagonal road and cell boundary are handled',()=>{const r={...road,points:[{x:40,z:40},{x:90,z:90}]};assert.deepEqual(clearRoadBuildings([house(64,64,4,4)],[r]),[])});
 
 test('environment poles block movement and allow retreat',()=>{const objects=[{x:0,z:0,radius:0.12,kind:'lamp'}];const hit=moveWithBuildingCollision(-5,0,10,0,1.15,[],185,[],objects);assert.equal(hit.objectHit,objects[0]);assert.ok(hit.x<0);assert.equal(moveWithBuildingCollision(hit.x,0,-3,0,1.15,[],185,[],objects).blocked,false);assert.equal(moveWithBuildingCollision(-5,3,10,0,1.15,[],185,[],objects).blocked,false)});
+
+import {checkpoints} from './policeCheckpoints.ts';
+test('police checkpoint selection uses distinct safe junctions and respects cap',()=>{const roads=[];for(let i=0;i<6;i++){const x=i*100;for(const [dx,dz] of [[40,0],[-40,0],[0,40],[0,-40]])roads.push({points:[{x,z:0},{x:x+dx,z:dz}],width:8,name:'Test'})}const map={roads,buildings:[],spawn:{x:-100,z:-100},pickup:{x:0,z:0},delivery:{x:0,z:0},extent:700};const result=checkpoints(map,()=>0.5);assert.equal(result.length,4);assert.equal(new Set(result.map(c=>c.junction.x)).size,4);assert.ok(result.every(c=>Math.hypot(c.car.x-c.officer.x,c.car.z-c.officer.z)>=7-1e-8));assert.deepEqual(checkpoints({...map,roads:[]},()=>0.5),[])});
