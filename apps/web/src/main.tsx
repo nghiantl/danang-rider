@@ -5,8 +5,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 03.10 · LIVING CITY';
-const RELEASE_VERSION = '3.10';
+const SPRINT_LABEL = 'SPRINT 03.10.1 · CHUNK OPTIMIZATION';
+const RELEASE_VERSION = '3.10.1';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
 import { BUILDINGS, moveWithBuildingCollision } from './collision';
@@ -53,7 +53,7 @@ function City({map,world,position,target,stage}:{target:Point;stage:string;map:O
   const active=useMemo(()=>nearby(world,cx*CHUNK_SIZE,cz*CHUNK_SIZE),[world,cx,cz]);
   if(map)return <group>
     <mesh rotation={[-Math.PI/2,0,0]} receiveShadow><planeGeometry args={[map.extent*2+150,map.extent*2+150]}/><meshStandardMaterial color="#a0a58c"/></mesh>
-    <CityDetail chunks={active}/><Landmarks map={map} position={position}/><Beach map={map} position={position}/>
+    <CityDetail world={world} chunks={active}/><Landmarks map={map} position={position}/><Beach map={map} position={position}/>
     {stage!=='done'&&<Marker at={new THREE.Vector3(target.x,0,target.z)} color={stage==='pickup'?'#ffd45a':'#42e3aa'} label="ĐƠN HÀNG"/>}
   </group>;
   return <group>
