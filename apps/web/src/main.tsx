@@ -92,7 +92,7 @@ function Rider({vehicle,gender,inputs,onTick,map,world}:{vehicle:VehicleType;gen
    motion.current.distance+=travelled*Math.sign(velocity.current);
    g.position.x=next.x;
    g.position.z=next.z;
-   if(next.blocked && Math.hypot(next.x-g.position.x-dx,next.z-g.position.z-dz)>0.01) velocity.current=0;
+   if(next.blocked && Math.hypot(dx,dz)>0.01 && travelled<Math.hypot(dx,dz)*0.1) velocity.current=0;
    g.rotation.y=heading.current;
    motion.current.speed=velocity.current;motion.current.steer=steer;motion.current.brake=Boolean(brake);
    const chase=5.5+Math.min(Math.abs(velocity.current)/21,1)*1.5;

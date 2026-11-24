@@ -16,12 +16,24 @@ export function getBuildings() {
 }
 export const BUILDINGS = getBuildings();
 
-export type Obstacle = { x:number; z:number; halfX:number; halfZ:number };
+export type Obstacle = { x:number; z:number; halfX:number; halfZ:number; outline?: {x:number;z:number}[] };
 export function collidesWithBuildings(x: number, z: number, radius: number = RIDER_RADIUS, obstacles?: Obstacle[]) {
-  for (const b of (obstacles || BUILDINGS.map(v=>({...v,halfX:BUILDING_HALF_SIZE,halfZ:BUILDING_HALF_SIZE})))) {
+  const candidates: Obstacle[] = obstacles ?? BUILDINGS.map(v=>({...v,halfX:BUILDING_HALF_SIZE,halfZ:BUILDING_HALF_SIZE}));
+  for (const b of candidates) {
     const nearestX = Math.max(b.x - b.halfX, Math.min(x, b.x + b.halfX));
     const nearestZ = Math.max(b.z - b.halfZ, Math.min(z, b.z + b.halfZ));
-    if ((x - nearestX) ** 2 + (z - nearestZ) ** 2 < radius ** 2) return true;
+    if ((x - nearestX) ** 2 + (z - nearestZ) ** 2 >= radius ** 2) continue;
+    const polygon=b.outline;
+    if(!polygon || polygon.length<3) return true;
+    let inside=false;
+    for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){
+      const a=polygon[j],c=polygon[i],dx=c.x-a.x,dz=c.z-a.z;
+      const len=dx*dx+dz*dz;
+      const t=len?Math.max(0,Math.min(1,((x-a.x)*dx+(z-a.z)*dz)/len)):0;
+      if((x-a.x-t*dx)**2+(z-a.z-t*dz)**2<radius**2)return true;
+      if((a.z>z)!==(c.z>z)&&x<(c.x-a.x)*(z-a.z)/(c.z-a.z)+a.x)inside=!inside;
+    }
+    if(inside)return true;
   }
   return false;
 }
@@ -37,9 +49,11 @@ export function moveWithBuildingCollision(x: number, z: number, dx: number, dz: 
   let blocked = false;
   for (let i = 0; i < steps; i++) {
     const candidateX = Math.max(-worldLimit, Math.min(worldLimit, nextX + stepX));
+    if(candidateX!==nextX+stepX)blocked=true;
     if (!collidesWithBuildings(candidateX, nextZ, radius, obstacles)) nextX = candidateX;
     else blocked = true;
     const candidateZ = Math.max(-worldLimit, Math.min(worldLimit, nextZ + stepZ));
+    if(candidateZ!==nextZ+stepZ)blocked=true;
     if (!collidesWithBuildings(nextX, candidateZ, radius, obstacles)) nextZ = candidateZ;
     else blocked = true;
   }
