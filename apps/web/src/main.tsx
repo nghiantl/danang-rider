@@ -17,7 +17,6 @@ import { GPS } from './GPS';
 import { Traffic } from './Traffic';
 import { Pedestrians } from './Pedestrians';
 import { GameAudio } from './gameAudio';
-import { environmentAt, CACHE_KEY, validCache } from './environment';
 import { Environment } from './Environment';
 
 type VehicleType = 'petrol' | 'electric';
@@ -118,10 +117,11 @@ function Game({vehicle,gender,inputs,onTick,map,onStatus,audio}:{audio:GameAudio
  const [position,setPosition]=useState<Point>(map?.spawn||{x:0,z:-20});
  const vehicles=useRef<VehicleCollider[]>([]);
  const player=useRef<Point>(map?.spawn||{x:0,z:-20});
- const tick=(s:Telemetry)=>{let rain=0;try{const w=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');if(validCache(w))rain=w.rain}catch{};audio.update(s.speed,vehicle==='electric',rain,environmentAt(new Date()).night,vehicles.current.filter(v=>Math.hypot(v.x-s.x,v.z-s.z)<45).length/6);setPosition(p=>cell(p.x)===cell(s.x)&&cell(p.z)===cell(s.z)?p:{x:s.x,z:s.z});onTick(s)};
+ const audioWeather=useRef({rain:0,night:false});
+ const tick=(s:Telemetry)=>{audio.update(s.speed,vehicle==='electric',audioWeather.current.rain,audioWeather.current.night,vehicles.current.filter(v=>Math.hypot(v.x-s.x,v.z-s.z)<45).length/6);setPosition(p=>cell(p.x)===cell(s.x)&&cell(p.z)===cell(s.z)?p:{x:s.x,z:s.z});onTick(s)};
  return <Canvas shadows={false} dpr={[1,1.5]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:true}}>
   <color attach="background" args={['#a7d4e9']}/><fog attach="fog" args={['#a7d4e9',180,600]}/>
-  <Environment map={map} player={player} onStatus={onStatus}/>
+  <Environment map={map} player={player} onStatus={onStatus} audioWeather={audioWeather}/>
   <City map={map} world={world} position={position}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles}/>}{map&&<Pedestrians map={map} player={player}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles}/>
  </Canvas>;
 }
@@ -144,7 +144,7 @@ function App(){
  const up=(e:KeyboardEvent)=>{const k:Record<string,InputKey>={w:'forward',ArrowUp:'forward',s:'back',ArrowDown:'back',a:'left',ArrowLeft:'left',d:'right',ArrowRight:'right'};if(k[e.key])inputs.current[k[e.key]]=false};
  const release=()=>{inputs.current={forward:false,back:false,left:false,right:false}};
  window.addEventListener('keydown',down);window.addEventListener('keyup',up);window.addEventListener('blur',release);document.addEventListener('visibilitychange',release);
- return()=>{release();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',release);document.removeEventListener('visibilitychange',release)}},[started]);
+ return()=>{release();window.removeEventListener('keydown',down);window.removeEventListener('keyup',up);window.removeEventListener('blur',release);document.removeEventListener('visibilitychange',release)}},[started,audio]);
  const update=(s:Telemetry)=>{setTelemetry(s);const delta=Math.max(0,s.distance-lastDist.current);lastDist.current=s.distance;setRemaining(r=>Math.max(0,r-delta/1000/(vehicle==='petrol'?30:200)*(vehicle==='petrol'?1:100)));};
  const target:Point=stage==='pickup'?(map?.pickup||{x:PICKUP.x,z:PICKUP.z}):(map?.delivery||{x:DELIVERY.x,z:DELIVERY.z});
  const distanceTo=Math.hypot(telemetry.x-target.x,telemetry.z-target.z);
