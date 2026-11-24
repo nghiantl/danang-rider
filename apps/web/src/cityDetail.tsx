@@ -30,12 +30,12 @@ const ChunkDetail=React.memo(function ChunkDetail({chunk,context}:{chunk:Chunk;c
  }
  }}
  for(let t=-p.length/2+3;t<p.length/2-2;t+=8)add(t,0,0.085,Math.min(3,p.length/2-t),0.012,0.15,'#e8d69a');
- if(p.length>=18){const x=p.x+nx*(p.width/2+2),z=p.z+nz*(p.width/2+2);
+ if(p.length>=18){const x=p.x+ux*5+nx*(p.width/2+2),z=p.z+uz*5+nz*(p.width/2+2);
  const clear=!buildings.some(({b})=>Math.abs(x-b.x)<b.halfX+2&&Math.abs(z-b.z)<b.halfZ+2)&&![p,...candidates].some(q=>{const dx=x-q.x,dz=z-q.z;return Math.abs(dx*Math.cos(q.angle)+dz*Math.sin(q.angle))<q.length/2+2&&Math.abs(-dx*Math.sin(q.angle)+dz*Math.cos(q.angle))<q.width/2+2});
  if(clear){add(5,p.width/2+2,1.5,0.35,3,0.35,'#775d43');add(5,p.width/2+2,4,2.6,2.8,2.6,'#56865a')}
  }}
  }
- for(const {b,index} of chunk.buildings){const pts=b.outline;if(!pts||pts.length<3)continue;for(let i=0;i<pts.length-1;i++){const p=pts[i],q=pts[i+1],dx=q.x-p.x,dz=q.z-p.z,len=Math.hypot(dx,dz);if(len<3)continue;const a=-Math.atan2(dz,dx);for(let y=2.2;y<b.height-0.6;y+=3.3){boxes.push({x:(p.x+q.x)/2,z:(p.z+q.z)/2,y,w:len*0.65,h:1.25,d:0.12,a,color:'#557789'})}if(index%4===0)boxes.push({x:(p.x+q.x)/2,z:(p.z+q.z)/2,y:2.9,w:len*0.8,h:0.25,d:1.2,a,color:['#b65b48','#458779','#c79a45'][index%3]})}}
+ for(const {b,index} of chunk.buildings){const pts=b.outline;if(!pts||pts.length<3)continue;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length],dx=q.x-p.x,dz=q.z-p.z,len=Math.hypot(dx,dz);if(len<3)continue;const a=-Math.atan2(dz,dx);for(let y=2.2;y<b.height-0.6;y+=3.3){boxes.push({x:(p.x+q.x)/2,z:(p.z+q.z)/2,y,w:len*0.65,h:1.25,d:0.12,a,color:'#557789'})}if(index%4===0)boxes.push({x:(p.x+q.x)/2,z:(p.z+q.z)/2,y:2.9,w:len*0.8,h:0.25,d:1.2,a,color:['#b65b48','#458779','#c79a45'][index%3]})}}
  return boxes;
  },[chunk,context]);
  return <group>{chunk.buildings.map(({b,index})=><House key={index} b={b} index={index}/>)}<Batch items={items}/></group>;
