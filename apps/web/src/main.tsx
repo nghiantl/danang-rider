@@ -5,11 +5,13 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 03.16 · ENVIRONMENT COLLISION';
-const RELEASE_VERSION = '3.16';
+const SPRINT_LABEL = 'SPRINT 03.17 · TRAFFIC POLICE';
+const RELEASE_VERSION = '3.17';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
 import {treePosition,type EnvironmentCollider} from './environmentCollision';
+import {checkpoints} from './policeCheckpoints';
+import {PoliceCheckpoints} from './PoliceCheckpointsView';
 import { BUILDINGS, moveWithBuildingCollision } from './collision';
 import { loadDaNangMap, type OSMMap, type Point } from './osm';
 
@@ -139,6 +141,7 @@ class WebGLBoundary extends React.Component<{children:React.ReactNode},{failed:b
 function ContextMonitor({onLost,onRestored}:{onLost:()=>void;onRestored:()=>void}){const {gl,setFrameloop}=useThree();useEffect(()=>{const canvas=gl.domElement;const lost=(e:Event)=>{e.preventDefault();setFrameloop('never');onLost()};const restored=()=>{setFrameloop('always');onRestored()};canvas.addEventListener('webglcontextlost',lost);canvas.addEventListener('webglcontextrestored',restored);return()=>{canvas.removeEventListener('webglcontextlost',lost);canvas.removeEventListener('webglcontextrestored',restored)}},[gl,setFrameloop,onLost,onRestored]);return null}
 function Game({vehicle,gender,inputs,onTick,map,onStatus,audio,target,stage}:{target:Point;stage:string;audio:GameAudio;onStatus:(s:string)=>void;vehicle:VehicleType;gender:Gender;inputs:React.MutableRefObject<Record<InputKey,boolean>>;onTick:(s:Telemetry)=>void;map:OSMMap|null}){
  const world=useMemo(()=>map?buildWorld(map):new Map<string,Chunk>(),[map]);
+ const police=useMemo(()=>map?checkpoints(map):[],[map]);
  const [position,setPosition]=useState<Point>(map?.spawn||{x:0,z:-20});
  const vehicles=useRef<VehicleCollider[]>([]);const crossingPeople=useRef<Point[]>([]);const people=useRef<PedestrianCollider[]>([]),hits=useRef<PedestrianHit[]>([]);
  const player=useRef<Point>(map?.spawn||{x:0,z:-20});
@@ -154,7 +157,7 @@ function Game({vehicle,gender,inputs,onTick,map,onStatus,audio,target,stage}:{ta
   <ContextMonitor onLost={onLost} onRestored={onRestored}/>
   <color attach="background" args={['#a7d4e9']}/><fog attach="fog" args={['#a7d4e9',180,600]}/>
   <Environment map={map} player={player} onStatus={onStatus} audioWeather={audioWeather} lampColliders={lampColliders}/>
-  <AdaptiveResolution/><City map={map} world={world} position={position} target={target} stage={stage}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles} crossingPeople={crossingPeople} signalColliders={signalColliders}/>}{map&&<Pedestrians map={map} player={player} world={world} crossingPeople={crossingPeople} people={people} hits={hits}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles} people={people} hits={hits} onCollision={onCollision} lampColliders={lampColliders} signalColliders={signalColliders}/>
+  <AdaptiveResolution/><PoliceCheckpoints items={police} player={player}/><City map={map} world={world} position={position} target={target} stage={stage}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles} crossingPeople={crossingPeople} signalColliders={signalColliders}/>}{map&&<Pedestrians map={map} player={player} world={world} crossingPeople={crossingPeople} people={people} hits={hits}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles} people={people} hits={hits} onCollision={onCollision} lampColliders={lampColliders} signalColliders={signalColliders}/>
  </Canvas><div ref={flash} aria-hidden="true" style={{position:'absolute',inset:0,pointerEvents:'none',background:'#ff6347',opacity:0,zIndex:20}}/>{contextLost&&<WebGLNotice message="WebGL context bị mất. Game đang chờ trình duyệt phục hồi; nếu không tự phục hồi, hãy tải lại."/>}</WebGLBoundary>
 }
 type Telemetry={speed:number;distance:number;x:number;z:number;heading:number;fps:number};
