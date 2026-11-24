@@ -3,8 +3,7 @@
 // This is an occasional manually triggered export, NOT a live gameplay request.
 import { mkdir, writeFile } from 'node:fs/promises';
 // Approximately 1.2 km x 1.2 km around the original downtown center.
-const bbox='108.2152,16.0624,108.2264,16.0732';
-const url='https://api.openstreetmap.org/api/0.6/map?bbox='+bbox;
+export const tiles=['108.2152,16.0624,108.2264,16.0732','108.2264,16.0624,108.2376,16.0732','108.2152,16.0516,108.2264,16.0624','108.2264,16.0516,108.2376,16.0624'];
 const output='apps/web/public/data/danang-osm.json';
 const acceptedHighways=new Set(['primary','secondary','tertiary','residential','service','living_street','unclassified','pedestrian']);
 function attributes(tag){
@@ -45,7 +44,7 @@ export function parseOsmXml(xml){
       const point=nodes.get(ref);
       if(point)geometry.push(point);
     }
-    if(geometry.length>=2)elements.push({type:'way',tags,geometry});
+    if(geometry.length>=2)elements.push({type:'way',id:attributes(match[0].split('>')[0]).id,tags,geometry});
   }
   return {elements};
 }
@@ -55,21 +54,27 @@ export function validateSnapshot(data){
   if(roads<3)throw Error('Insufficient OSM roads: '+roads);
   return {roads,buildings};
 }
+export function mergeSnapshots(snapshots){
+ const ways=new Map();
+ for(const snapshot of snapshots)for(const e of snapshot.elements){const key=e.id??JSON.stringify(e.geometry);ways.set(key,e)}
+ return {elements:[...ways.values()]};
+}
 async function main(){
-  const controller=new AbortController();
-  const timer=setTimeout(()=>controller.abort(),60000);
+ const snapshots=[];
+ for(const bbox of tiles){
+  const url='https://api.openstreetmap.org/api/0.6/map?bbox='+bbox;
+  const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),60000);
   try{
-    const response=await fetch(url,{signal:controller.signal,headers:{'User-Agent':'DaNangRiderOSMExporter/1.0 (https://github.com/nghiantl/danang-rider)','Accept':'application/xml'}});
-    if(!response.ok)throw Error('OSM official API HTTP '+response.status);
-    const xml=await response.text();
-    if(!xml.includes('<osm'))throw Error('OSM API returned unexpected content');
-    const data=parseOsmXml(xml);
-    const counts=validateSnapshot(data);
-    await mkdir('apps/web/public/data',{recursive:true});
-    await writeFile(output,JSON.stringify(data));
-    console.log('Saved verified OSM snapshot',output,counts,'source:',url);
-  }finally{clearTimeout(timer);}
+   const response=await fetch(url,{signal:controller.signal,headers:{'User-Agent':'DaNangRiderOSMExporter/1.0 (https://github.com/nghiantl/danang-rider)','Accept':'application/xml'}});
+   if(!response.ok)throw Error('OSM HTTP '+response.status+' '+bbox);
+   const xml=await response.text();if(!xml.includes('<osm'))throw Error('Unexpected OSM response');
+   const data=parseOsmXml(xml);validateSnapshot(data);snapshots.push(data);
+  }finally{clearTimeout(timer)}
+  if(snapshots.length<tiles.length)await new Promise(resolve=>setTimeout(resolve,2000));
+ }
+ const data=mergeSnapshots(snapshots),counts=validateSnapshot(data);
+ await mkdir('apps/web/public/data',{recursive:true});
+ await writeFile(output,JSON.stringify(data));
+ console.log('Saved expanded snapshot',counts);
 }
-if(process.argv[1]&&import.meta.url===new URL('file://'+process.argv[1]).href){
-  main().catch(error=>{console.error(error);process.exitCode=1;});
-}
+if(process.argv[1]&&import.meta.url===new URL('file://'+process.argv[1]).href)main().catch(error=>{console.error(error);process.exitCode=1});
