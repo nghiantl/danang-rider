@@ -51,6 +51,9 @@ jobs:
       - name: Pedestrian tests
         run: node --experimental-strip-types --test apps/web/src/pedestrians.test.mjs
 
+      - name: Test environment
+        run: node --experimental-strip-types --test apps/web/src/environment.test.mjs
+
       - name: Typecheck and build Web 3D
         run: npm run build
 
