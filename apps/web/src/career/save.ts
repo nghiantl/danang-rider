@@ -1,5 +1,6 @@
 import type {Order,Income} from '../orders';
 import type {Point} from '../osm';
+import {advanceXP,levelFor,reward,threshold,MAX_LEVEL} from './progression.ts';
 export const KEY='danang-rider-career-v1';
 export type Career={version:1;name:string;created:string;xp:number;level:number;income:Income;vehicle:'petrol'|'electric';gender:'male'|'female';remaining:number;position:Point|null;stage:'pickup'|'dropoff'|'done';order:Order|null;batch:number;paid:string[];ledger:{id:string;amount:number;at:string}[];mapMode:'osm'|'fallback'|null};
 const int=(n:unknown)=>typeof n==='number'&&Number.isSafeInteger(n)&&n>=0;
@@ -9,6 +10,7 @@ export function parseCareer(raw:string):Career{
  if(!v||v.version!==1||typeof v.name!=='string'||!v.name.trim()||v.name.length>40||typeof v.created!=='string'||!Number.isFinite(Date.parse(v.created))||!int(v.xp)||!int(v.level)||v.level<1||!v.income||!['wallet','completed','meters'].every(k=>int(v.income[k]))||!['petrol','electric'].includes(v.vehicle)||!['male','female'].includes(v.gender)||!Number.isFinite(v.remaining)||v.remaining<0||v.remaining>(v.vehicle==='petrol'?4:100)||!(v.position===null||point(v.position))||!['pickup','dropoff','done'].includes(v.stage)||!int(v.batch)||!Array.isArray(v.paid)||!v.paid.every((x:unknown)=>typeof x==='string')||!Array.isArray(v.ledger)||!v.ledger.every((x:any)=>x&&typeof x.id==='string'&&int(x.amount)&&typeof x.at==='string')||![null,'osm','fallback'].includes(v.mapMode))throw Error('Dữ liệu lưu không hợp lệ');
  const o=v.order;if(o!==null&&(!o||typeof o.id!=='string'||typeof o.shop!=='string'||!point(o.pickup)||!point(o.delivery)||!int(o.fare)||!Number.isFinite(o.meters)||o.meters<0))throw Error('Đơn hàng không hợp lệ');
  if(v.stage!=='done'&&(!o||v.paid.includes(o.id)))throw Error('Trạng thái đơn không hợp lệ');
+ v.xp=Math.min(v.xp,threshold(MAX_LEVEL));v.level=levelFor(v.xp);
  return v;
 }
 export function newCareer(legacy:string|null):Career{
@@ -18,5 +20,6 @@ export function newCareer(legacy:string|null):Career{
 }
 export function settle(c:Career,o:Order):Career{
  if(c.paid.includes(o.id))return c;
- return {...c,stage:'done',income:{wallet:c.income.wallet+o.fare,completed:c.income.completed+1,meters:c.income.meters+Math.round(o.meters)},paid:[...c.paid,o.id],ledger:[...c.ledger,{id:o.id,amount:o.fare,at:new Date().toISOString()}],batch:c.batch+1};
+ const p=advanceXP(c.xp,o.meters),at=new Date().toISOString(),bonuses=p.levels.map(l=>({id:'LEVEL-'+l,amount:reward(l),at})).filter(t=>!c.ledger.some(e=>e.id===t.id));
+ return {...c,xp:p.xp,level:p.level,stage:'done',income:{wallet:c.income.wallet+o.fare+bonuses.reduce((sum,t)=>sum+t.amount,0),completed:c.income.completed+1,meters:c.income.meters+Math.round(o.meters)},paid:[...c.paid,o.id],ledger:[...c.ledger,{id:o.id,amount:o.fare,at},...bonuses],batch:c.batch+1};
 }
