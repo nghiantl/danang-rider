@@ -33,8 +33,6 @@ type VehicleType = 'petrol' | 'electric';
 type Gender = 'male' | 'female';
 type InputKey = 'forward' | 'back' | 'left' | 'right';
 const initialFuel = { petrol: 4, electric: 100 };
-const DELIVERY = new THREE.Vector3(140, 0, -100);
-const PICKUP = new THREE.Vector3(-20, 0, 80);
 const COLORS = ['#e9d5a4', '#d9c8aa', '#b9c7c0', '#b0bac5', '#e0bba9'];
 
 function Building({ x, z, index }: {x:number; z:number; index:number}) {
@@ -159,7 +157,7 @@ function App(){
  const [telemetry,setTelemetry]=useState<Telemetry>({speed:0,distance:0,x:0,z:-20,heading:0,fps:0});
  const [stage,setStage]=useState<'pickup'|'dropoff'|'done'>('done');
  const [income,setIncome]=useState(()=>{try{return readIncome(localStorage.getItem('danang-rider-income-v1'))}catch{return readIncome(null)}});
- const [batch,setBatch]=useState(0),[order,setOrder]=useState<Order|null>(null);
+ const [batch,setBatch]=useState(()=>income.completed+Math.floor(Date.now()/1000)),[order,setOrder]=useState<Order|null>(null);
  const offers=useMemo(()=>makeOrders(map,batch),[map,batch]);
  const lock=useRef<'pickup'|'dropoff'|'done'>('done');
  const wallet=income.wallet;
