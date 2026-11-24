@@ -11,14 +11,16 @@ export function Traffic({roads,player,vehicles}:{roads:Road[];player:React.RefOb
  const signals=useMemo(()=>signalsFor(lanes),[lanes]);
  const brakes=useRef<THREE.InstancedMesh>(null);
  const colors=useMemo(()=>({red:new THREE.Color('#ff2929'),yellow:new THREE.Color('#ffcb22'),green:new THREE.Color('#24e85a'),dim:new THREE.Color('#651d20')}),[]);
+ const localCache=useRef<{l:ReturnType<typeof lanesFor>[number];i:number}[]>([]),lastScan=useRef(-10);
  const cars=useRef<Car[]>([]),body=useRef<THREE.InstancedMesh>(null),top=useRef<THREE.InstancedMesh>(null),wheels=useRef<THREE.InstancedMesh>(null);
  const dummy=useMemo(()=>new THREE.Object3D(),[]);
- useLayoutEffect(()=>{cars.current=[];vehicles.current=[];for(let i=0;i<COUNT;i++){body.current?.setColorAt(i,new THREE.Color(['#d9dce1','#bf5348','#477eab','#e2bc66','#3d474d'][i%5]));top.current?.setColorAt(i,new THREE.Color(i%3===0?'#536b79':'#263d4a'))}if(body.current?.instanceColor)body.current.instanceColor.needsUpdate=true;if(top.current?.instanceColor)top.current.instanceColor.needsUpdate=true},[lanes]);
+ useLayoutEffect(()=>{cars.current=[];vehicles.current=[];lastScan.current=-10;for(let i=0;i<COUNT;i++){body.current?.setColorAt(i,new THREE.Color(['#d9dce1','#bf5348','#477eab','#e2bc66','#3d474d'][i%5]));top.current?.setColorAt(i,new THREE.Color(i%3===0?'#536b79':'#263d4a'))}if(body.current?.instanceColor)body.current.instanceColor.needsUpdate=true;if(top.current?.instanceColor)top.current.instanceColor.needsUpdate=true},[lanes]);
  useFrame((state,raw)=>{
  if(!body.current||!top.current||!wheels.current)return;
  const p=player.current,dt=Math.min(raw,0.05);
  const time=state.clock.elapsedTime;
- const local=lanes.map((l,i)=>({l,i})).filter(({l})=>Math.hypot((l.a.x+l.b.x)/2-p.x,(l.a.z+l.b.z)/2-p.z)<180);
+ if(time-lastScan.current>0.5){lastScan.current=time;localCache.current=lanes.map((l,i)=>({l,i})).filter(({l})=>Math.hypot((l.a.x+l.b.x)/2-p.x,(l.a.z+l.b.z)/2-p.z)<180)}
+ const local=localCache.current;
  const place=(mesh:THREE.InstancedMesh,i:number,x:number,y:number,z:number,h:number,w:number,height:number,d:number)=>{dummy.position.set(x,y,z);dummy.rotation.set(0,h,0);dummy.scale.set(w,height,d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix)};
  const published:VehicleCollider[]=[];
  const targets=cars.current.map(c=>c?desiredSpeed(c,lanes,cars.current,p,signals,time):0);
