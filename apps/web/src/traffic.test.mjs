@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {lanesFor,pose,advance,signalsFor,light,desiredSpeed,signalState,signalApproaches} from './traffic.ts';
+import {lanesFor,pose,advance,signalsFor,light,desiredSpeed,signalState,signalApproaches,stopPosition,insideJunction} from './traffic.ts';
 const a={x:0,z:0},b={x:0,z:20},c={x:20,z:20};
 const road=(points,oneway=0)=>({points,oneway,width:8,name:'Test'});
 test('one-way lane and right-hand offset',()=>{const l=lanesFor([road([a,b],1)]);assert.equal(l.length,1);assert.equal(pose(l[0],10).x,-2)});
@@ -13,7 +13,7 @@ test('red and yellow stop AI before intersection; green releases it',()=>{
  const l=lanesFor([road([a,b,c]),road([b,{x:-20,z:20}]),road([b,{x:0,z:40}])]);
  const signals=signalsFor(l);assert.equal(signals.size,1);
  const signal=[...signals.values()][0];
- const v={lane:0,t:17,speed:8,kind:0};
+ const v={lane:0,t:0,speed:8,kind:0};v.t=stopPosition(v,l[0],l);
  const axis=Math.abs(l[0].ux)>Math.abs(l[0].uz)?0:1;
  for(const [phase,expected] of [[0,'green'],[20,'yellow'],[23,'red']]){
   const time=(phase-signal.phase-axis*23+92)%46;
@@ -30,4 +30,23 @@ test('T junction has no signal; four-way junction has four approaches',()=>{
 test('countdown follows exact phase boundaries',()=>{
  const s={point:a,axis:0,phase:0};
  for(const [t,color,remaining] of [[0,'green',20],[19,'green',1],[20,'yellow',3],[22,'yellow',1],[23,'red',23],[26,'red',20],[45,'red',1],[46,'green',20]])assert.deepEqual(signalState(s,0,t),{color,remaining});
+});
+
+test('committed vehicle clears intersection even after red',()=>{
+ const l=lanesFor([road([a,b,{x:0,z:40}]),road([{x:-20,z:20},b,c])]),signals=signalsFor(l),s=[...signals.values()][0];
+ const v={lane:0,t:18,speed:8,kind:1};
+ const time=(23-s.phase-23+92)%46;
+ assert.equal(light(s,1,time),'red');
+ assert.equal(desiredSpeed(v,l,[v],{x:100,z:100},signals,time),8);
+ assert.ok(insideJunction(l[0],v.t,l,signals));
+});
+test('green approach waits for vehicle clearing junction',()=>{
+ const l=lanesFor([road([a,b,{x:0,z:40}]),road([{x:-20,z:20},b,c])]),signals=signalsFor(l),s=[...signals.values()][0];
+ const v={lane:0,t:0,speed:8,kind:1};v.t=stopPosition(v,l[0],l);
+ const cross=l.findIndex(q=>q.a.x===-20&&q.b.x===0);
+ const other={lane:cross,t:19,speed:8,kind:1};
+ const time=(0-s.phase-23+92)%46;
+ assert.equal(desiredSpeed(v,l,[v,other],{x:100,z:100},signals,time),0);
+ assert.equal(desiredSpeed(v,l,[v],{x:100,z:100},signals,time),8);
+ assert.ok(l[0].length-v.t>=6.8);
 });
