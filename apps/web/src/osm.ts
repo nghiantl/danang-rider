@@ -1,3 +1,4 @@
+import {buildGraph,missionPoints} from './navigation.ts';
 // Real OpenStreetMap geometry loaded at runtime; no API key required.
 // The area is deliberately small to keep iPhone rendering affordable.
 export type Point = { x: number; z: number };
@@ -34,11 +35,9 @@ export function parseOSM(elements: Element[]): OSMMap {
   }
   // Choose targets along the actual road network, not inside building footprints.
   const extent = Math.max(200,...roads.flatMap(r=>r.points.map(p=>Math.max(Math.abs(p.x),Math.abs(p.z)))));
-  const roadPoints = roads.flatMap(r=>r.points).filter(p=>Math.abs(p.x)<extent-8&&Math.abs(p.z)<extent-8&&!buildings.some(b=>Math.abs(p.x-b.x)<b.halfX+2&&Math.abs(p.z-b.z)<b.halfZ+2));
-  if (roadPoints.length < 3) throw new Error('OSM roads insufficient for gameplay');
-  const spawn=roadPoints.reduce((a,b)=>Math.hypot(a.x,a.z)<Math.hypot(b.x,b.z)?a:b);
-  const pickup=roadPoints.reduce((a,b)=>Math.hypot(a.x-spawn.x,a.z-spawn.z)>Math.hypot(b.x-spawn.x,b.z-spawn.z)?a:b);
-  const delivery=roadPoints.reduce((a,b)=>Math.hypot(a.x-pickup.x,a.z-pickup.z)>Math.hypot(b.x-pickup.x,b.z-pickup.z)?a:b);
+  const mission=missionPoints(buildGraph(roads),p=>Math.abs(p.x)<extent-8&&Math.abs(p.z)<extent-8&&!buildings.some(b=>Math.abs(p.x-b.x)<b.halfX+2&&Math.abs(p.z-b.z)<b.halfZ+2));
+  if(!mission)throw new Error('OSM roads insufficient for connected gameplay');
+  const {spawn,pickup,delivery}=mission;
   return {roads,buildings,pickup,delivery,spawn,extent};
 }
 // Try independent public Overpass instances. GET avoids POST preflight on mobile Safari.
