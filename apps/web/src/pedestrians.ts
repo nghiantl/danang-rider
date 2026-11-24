@@ -32,3 +32,12 @@ export function stepWalker(w:Walker,p:WalkPath,player:Point,dt:number){
  w.phase+=dt*w.speed*6;
  return true;
 }
+
+export type PedestrianCollider=Point & {id:number};
+export type PedestrianHit={id:number;dx:number;dz:number;speed:number};
+export function pedestrianImpact(a:Point,b:Point,speed:number,people:PedestrianCollider[]):PedestrianHit|null{
+ const dx=b.x-a.x,dz=b.z-a.z,d2=dx*dx+dz*dz;if(speed<1.5||d2<1e-8)return null;
+ let best=Infinity,hit:PedestrianHit|null=null;
+ for(const p of people){const t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.z-a.z)*dz)/d2));if(t<best&&Math.hypot(a.x+t*dx-p.x,a.z+t*dz-p.z)<0.95){best=t;hit={id:p.id,dx:dx/Math.sqrt(d2),dz:dz/Math.sqrt(d2),speed}}}return hit;
+}
+export function fallPose(age:number,speed:number){const travel=Math.min(1.8,0.35+speed*0.09),t=Math.min(1,Math.max(0,age/0.45));return {offset:travel*(1-(1-t)**2),lift:Math.sin(t*Math.PI)*Math.min(0.65,speed*0.035),tilt:Math.PI/2*(age<0.45?t:age<2.1?1:Math.max(0,1-(age-2.1)/0.8)),done:age>=2.9}}
