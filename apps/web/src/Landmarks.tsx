@@ -1,6 +1,7 @@
 import {useMemo} from 'react';
 import * as THREE from 'three';
-import {project,type OSMMap,type Point} from './osm';
+import {type OSMMap,type Point} from './osm';
+import {riverGrid} from './riverGeometry';
 const normalize=(s:string)=>s.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase();
 export function Landmarks({map,position}:{map:OSMMap;position:Point}){
  const bridges=useMemo(()=>['cau rong','cau song han'].flatMap((name,index)=>{
@@ -10,10 +11,9 @@ export function Landmarks({map,position}:{map:OSMMap;position:Point}){
  const length=Math.hypot(b.x-a.x,b.z-a.z);if(length<100)return [];
  return [{index,a,b,length,x:(a.x+b.x)/2,z:(a.z+b.z)/2,angle:-Math.atan2(b.z-a.z,b.x-a.x),width:Math.max(...roads.map(r=>r.width))}];
  }),[map]);
- const water=useMemo(()=>{const shape=new THREE.Shape();const west=[[16.0516,108.2247],[16.059,108.2248],[16.0678,108.2249],[16.0732,108.2244]],east=[[16.0732,108.2288],[16.0678,108.2291],[16.059,108.2294],[16.0516,108.2298]];[...west,...east].forEach(([lat,lon],i)=>{const p=project(lat,lon);if(i===0)shape.moveTo(p.x,-p.z);else shape.lineTo(p.x,-p.z)});shape.closePath();return shape},[]);
- const river=project(16.063,108.227);
+ const water=useMemo(()=>{const cells=riverGrid(map).cells;const vertices:number[]=[];for(const p of cells){const x=p.x,z=p.z;vertices.push(x-2,.012,z-2,x-2,.012,z+2,x+2,.012,z+2,x-2,.012,z-2,x+2,.012,z+2,x+2,.012,z-2)}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.computeVertexNormals();return g},[map]);
  return <group>
- {bridges.length>0&&Math.abs(position.x-river.x)<1500&&<mesh rotation={[-Math.PI/2,0,0]} position={[0,0.012,0]}><shapeGeometry args={[water]}/><meshStandardMaterial color="#377f9a" roughness={0.35} metalness={0.12}/></mesh>}
+ <mesh geometry={water}><meshStandardMaterial color="#377f9a" roughness={0.35} metalness={0.12}/></mesh>
  {bridges.filter(b=>Math.hypot(b.x-position.x,b.z-position.z)<900).map(b=><Bridge key={b.index} {...b}/>)}
  </group>
 }
