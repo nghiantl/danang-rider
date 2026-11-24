@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {lanesFor,pose,advance,signalsFor,light,desiredSpeed,signalState,signalApproaches,stopPosition,insideJunction} from './traffic.ts';
+import {lanesFor,pose,advance,signalsFor,light,desiredSpeed,signalState,signalApproaches,stopPosition,insideJunction,crossingSetback,CROSSWALK_DEPTH} from './traffic.ts';
 const a={x:0,z:0},b={x:0,z:20},c={x:20,z:20};
 const road=(points,oneway=0)=>({points,oneway,width:8,name:'Test'});
 test('one-way lane and right-hand offset',()=>{const l=lanesFor([road([a,b],1)]);assert.equal(l.length,1);assert.equal(pose(l[0],10).x,-2)});
@@ -50,3 +50,5 @@ test('green approach waits for vehicle clearing junction',()=>{
  assert.equal(desiredSpeed(v,l,[v],{x:100,z:100},signals,time),8);
  assert.ok(l[0].length-v.t>=6.8);
 });
+
+test('red stop leaves entire zebra crossing clear for both vehicle types',()=>{const lanes=lanesFor([road([a,b,{x:0,z:40}]),road([{x:-20,z:20},b,c])]);for(const {lane:l} of signalApproaches(lanes,signalsFor(lanes)))for(const kind of [0,1]){const front=kind===1?1.8:0.825;assert.ok(stopPosition({kind},l,lanes)+front<=l.length-crossingSetback(l,lanes)-CROSSWALK_DEPTH/2-0.49)}});
