@@ -22,9 +22,12 @@ export function DeliveryScene({action,gender,target}:{action:React.RefObject<Del
  p.position.set(x,Math.sin(t*12)*.035*(t>1&&t<4.7?1:0),z);p.rotation.y=Math.atan2(x-dest.x,z-dest.z);
  if(t<1){p.position.x=side*.85*t;p.position.y=.45*(1-t)}
  if(t>5){p.position.x=side*.85*(6-t);p.position.y=.45*(t-5)}
- const carrying=a.kind==='pickup'?t>=2.4&&t<4.8:t>=.8&&t<2.8;
- b.visible=carrying||(a.kind==='pickup'&&t<2.4)||(a.kind==='dropoff'&&t>=2.8&&t<4.8);
- if(carrying)b.position.set(p.position.x,1.12+p.position.y,p.position.z-.25);else b.position.set(dest.x,1.12,dest.z-.25);
+ const carrying=a.kind==='pickup'?t>=2.4&&t<4.7:t>=1.0&&t<2.8;
+ b.visible=a.kind==='pickup'?t<5.1:t<4.8;
+ if(carrying)b.position.set(p.position.x-Math.sin(p.rotation.y)*.28,1.12+p.position.y,p.position.z-Math.cos(p.rotation.y)*.28);
+ else if(a.kind==='pickup'&&t>=4.7){const k=Math.min(1,(t-4.7)/.4);b.position.set(side*.85*(1-k),1.12+.18*k,.3+.55*k)}
+ else if(a.kind==='dropoff'&&t<1){const k=t;b.position.set(side*.85*k,1.3-.18*k,.85-.55*k)}
+ else b.position.set(dest.x,1.12,dest.z-.25);
  });
  return <group ref={root} visible={false}><group ref={courier}><Person shirt={gender==='female'?'#e58ca5':'#3676b7'} helmet/></group><mesh ref={parcel}><boxGeometry args={[.32,.25,.28]}/><meshStandardMaterial color="#c89a60"/></mesh></group>
 }
