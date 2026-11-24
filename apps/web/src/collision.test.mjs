@@ -58,5 +58,7 @@ test('rotated vehicle uses oriented footprint',()=>{
 test('rider can escape existing overlap',()=>{
  const v=vehicleCollider(0,0,0,1);
  const result=moveWithBuildingCollision(1,0,3,0,1.15,[],185,[v]);
- assert.equal(result.x,4);
+ assert.ok(Math.abs(result.x-4)<1e-9, `Expected x near 4, got ${result.x}`);
+ assert.ok(penetration(result.x,result.z,1.15,v)<=0);
+ assert.equal(result.blocked,false);
 });
