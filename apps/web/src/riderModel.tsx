@@ -3,6 +3,8 @@ import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
 type Motion={speed:number;steer:number;distance:number;brake:boolean};
 type V=[number,number,number];
+const glowVertex='varying vec2 vUv; void main(){vUv=uv;gl_Position=projectionMatrix*modelViewMatrix*vec4(position,1.0);}';
+const glowFragment='varying vec2 vUv; uniform vec3 tint; uniform float strength; void main(){float d=length((vUv-0.5)*2.0);float a=1.0-smoothstep(0.0,1.0,d);gl_FragColor=vec4(tint,a*a*strength);}';
 function Body({at,size,color,round=false,metal=0}:{at:V;size:V;color:string;round?:boolean;metal?:number}){
  return <mesh position={at} scale={size}>{round?<sphereGeometry args={[0.5,16,12]}/>:<boxGeometry/>}<meshStandardMaterial color={color} roughness={metal?0.32:0.55} metalness={metal}/></mesh>;
 }
@@ -17,17 +19,25 @@ function Wheel({spin}:{spin:React.RefObject<THREE.Group|null>}){
  {[0,1,2,3,4].map(i=><group key={i} rotation={[i*Math.PI/5,0,0]}><Body at={[0.055,0,0]} size={[0.025,0.43,0.035]} color="#454d55" metal={0.5}/></group>)}<mesh rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.095,0.095,0.13,12]}/><meshStandardMaterial color="#626c74" metalness={0.6}/></mesh></group>;
 }
 export const RiderModel=memo(function RiderModel({vehicle,gender,motion}:{vehicle:'petrol'|'electric';gender:'male'|'female';motion:React.RefObject<Motion>}){
- const lean=useRef<THREE.Group>(null),front=useRef<THREE.Group>(null),fw=useRef<THREE.Group>(null),rw=useRef<THREE.Group>(null),lamp=useRef<THREE.MeshStandardMaterial>(null),headlight=useRef<THREE.SpotLight>(null),aim=useRef<THREE.Object3D>(null);
+ const lean=useRef<THREE.Group>(null),front=useRef<THREE.Group>(null),fw=useRef<THREE.Group>(null),rw=useRef<THREE.Group>(null),lamp=useRef<THREE.MeshStandardMaterial>(null),headlight=useRef<THREE.SpotLight>(null),aim=useRef<THREE.Object3D>(null),brakeGlow=useRef<THREE.Mesh>(null);
  const last=useRef(0);
  useFrame((_,dt)=>{const m=motion.current;if(!m)return;const step=m.distance-last.current;last.current=m.distance;
  if(lean.current)lean.current.rotation.z=THREE.MathUtils.damp(lean.current.rotation.z,m.steer*Math.min(Math.abs(m.speed)/8,1)*0.23,8,dt);
  if(front.current)front.current.rotation.y=THREE.MathUtils.damp(front.current.rotation.y,m.steer*0.24,10,dt);
  for(const w of [fw.current,rw.current])if(w)w.rotation.x-=step/0.325;
  if(lamp.current)lamp.current.emissiveIntensity=m.brake?3:0.55;
- if(headlight.current&&aim.current){headlight.current.target=aim.current;headlight.current.intensity=1.8;}
+ if(brakeGlow.current)brakeGlow.current.visible=m.brake;
+ if(headlight.current&&aim.current){headlight.current.target=aim.current;headlight.current.intensity=85;}
  });
  const electric=vehicle==='electric',paint=electric?'#36b6a7':'#d94b39',shirt=gender==='female'?'#e58ca5':'#3676b7',skin='#d9a77f',pants='#26364a';
- return <group ref={lean}>
+ return <group>
+ <mesh position={[0,0.115,-6.3]} rotation={[-Math.PI/2,0,0]} renderOrder={2}>
+ <planeGeometry args={[5.4,11]}/><shaderMaterial transparent depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} uniforms={{tint:{value:new THREE.Color('#fff0bd')},strength:{value:0.48}}} vertexShader={glowVertex} fragmentShader={glowFragment}/>
+ </mesh>
+ <mesh ref={brakeGlow} visible={false} position={[0,0.116,1.6]} rotation={[-Math.PI/2,0,0]} renderOrder={2}>
+ <planeGeometry args={[3.2,3.5]}/><shaderMaterial transparent depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} uniforms={{tint:{value:new THREE.Color('#ff2418')},strength:{value:0.85}}} vertexShader={glowVertex} fragmentShader={glowFragment}/>
+ </mesh>
+ <group ref={lean}>
  <group position={[0,0.325,-0.68]} ref={front}><Wheel spin={fw}/><Limb a={[-0.11,0,0]} b={[-0.11,0.65,0.12]} r={0.045} color="#aeb7bd"/><Limb a={[0.11,0,0]} b={[0.11,0.65,0.12]} r={0.045} color="#aeb7bd"/><Body at={[0,0.29,0]} size={[0.32,0.13,0.62]} color={paint} round/></group>
  <group position={[0,0.325,0.65]}><Wheel spin={rw}/></group>
  <Body at={[0,0.52,0.05]} size={[0.43,0.3,1.25]} color="#303940" round/>
@@ -64,5 +74,5 @@ export const RiderModel=memo(function RiderModel({vehicle,gender,motion}:{vehicl
  {[-1,1].map(side=><group key={'box'+side}><Body at={[side*0.17,1.23,1.07]} size={[0.035,0.39,0.018]} color="#55504a"/><Body at={[side*0.249,1.18,0.85]} size={[0.012,0.065,0.30]} color="#fff0b8"/></group>)}
  <Body at={[0,1.41,0.35]} size={[0.27,0.10,0.025]} color="#d5e5ed" round/>
  <Body at={[0,1.88,0.235]} size={[0.22,0.055,0.025]} color="#dce5e9" round/>
- </group>;
+ </group></group>;
 });
