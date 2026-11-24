@@ -5,8 +5,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 03.9.1 · LIGHTING FIX';
-const RELEASE_VERSION = '3.9.1';
+const SPRINT_LABEL = 'SPRINT 03.10 · LIVING CITY';
+const RELEASE_VERSION = '3.10';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
 import { BUILDINGS, moveWithBuildingCollision } from './collision';
@@ -119,6 +119,16 @@ function Rider({vehicle,gender,inputs,onTick,map,world,player,vehicles}:{player:
    <RiderModel vehicle={vehicle} gender={gender} motion={motion}/>
  </group>;
 }
+// Sample sustained frame times rather than reacting to individual slow frames.
+function AdaptiveResolution(){
+ const {gl,setDpr}=useThree();const sample=useRef({elapsed:0,frames:0,cooldown:0});
+ useFrame((_,dt)=>{const s=sample.current;if(dt>0.25){s.elapsed=0;s.frames=0;return} s.elapsed+=dt;s.frames++;if(s.elapsed<3)return;
+ const fps=s.frames/s.elapsed;s.elapsed=0;s.frames=0;if(s.cooldown>0){s.cooldown--;return}
+ const current=gl.getPixelRatio(),max=Math.min(1.5,window.devicePixelRatio||1);
+ const next=fps<38?Math.max(0.85,current-0.15):fps>55?Math.min(max,current+0.1):current;
+ if(Math.abs(next-current)>0.01){setDpr(next);s.cooldown=2}
+ });return null;
+}
 function Game({vehicle,gender,inputs,onTick,map,onStatus,audio,target,stage}:{target:Point;stage:string;audio:GameAudio;onStatus:(s:string)=>void;vehicle:VehicleType;gender:Gender;inputs:React.MutableRefObject<Record<InputKey,boolean>>;onTick:(s:Telemetry)=>void;map:OSMMap|null}){
  const world=useMemo(()=>map?buildWorld(map):new Map<string,Chunk>(),[map]);
  const [position,setPosition]=useState<Point>(map?.spawn||{x:0,z:-20});
@@ -126,10 +136,10 @@ function Game({vehicle,gender,inputs,onTick,map,onStatus,audio,target,stage}:{ta
  const player=useRef<Point>(map?.spawn||{x:0,z:-20});
  const audioWeather=useRef({rain:0,night:false});
  const tick=(s:Telemetry)=>{audio.update(s.speed,vehicle==='electric',audioWeather.current.rain,audioWeather.current.night,vehicles.current.filter(v=>Math.hypot(v.x-s.x,v.z-s.z)<45).length/6);setPosition(p=>cell(p.x)===cell(s.x)&&cell(p.z)===cell(s.z)?p:{x:s.x,z:s.z});onTick(s)};
- return <Canvas shadows={false} dpr={[1,1.5]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:true}}>
+ return <Canvas shadows={false} dpr={[0.85,1.5]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:true}}>
   <color attach="background" args={['#a7d4e9']}/><fog attach="fog" args={['#a7d4e9',180,600]}/>
   <Environment map={map} player={player} onStatus={onStatus} audioWeather={audioWeather}/>
-  <City map={map} world={world} position={position} target={target} stage={stage}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles}/>}{map&&<Pedestrians map={map} player={player}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles}/>
+  <AdaptiveResolution/><City map={map} world={world} position={position} target={target} stage={stage}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles}/>}{map&&<Pedestrians map={map} player={player} world={world}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles}/>
  </Canvas>;
 }
 type Telemetry={speed:number;distance:number;x:number;z:number;heading:number;fps:number};
