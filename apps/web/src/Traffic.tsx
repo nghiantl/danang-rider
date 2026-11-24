@@ -39,7 +39,8 @@ export function Traffic({roads,player,vehicles,crossingPeople}:{crossingPeople:R
  if(!c)continue;
  published.push(vehicleCollider(q.x,q.z,q.heading,c.kind));
  const car=c.kind===1,w=car?1.65:0.48,d=car?3.6:1.65,h=q.heading;
- const localPart=(mesh:THREE.InstancedMesh,index:number,x:number,y:number,z:number,width:number,height:number,depth:number)=>place(mesh,index,q.x+Math.cos(h)*x+Math.sin(h)*z,y,q.z-Math.sin(h)*x+Math.cos(h)*z,h,width,height,depth);
+ const origin=q;
+ const localPart=(mesh:THREE.InstancedMesh,index:number,x:number,y:number,z:number,width:number,height:number,depth:number)=>place(mesh,index,origin.x+Math.cos(h)*x+Math.sin(h)*z,y,origin.z-Math.sin(h)*x+Math.cos(h)*z,h,width,height,depth);
  const suv=i%2===0,roof=car?(suv?1.43:1.26):1.16;
  localPart(body.current,i,0,car?0.64:0.58,0,w,car?0.74:0.44,d);
  localPart(top.current,i,0,roof,car?-0.15:0,car?1.42:0.36,car?(suv?0.69:0.54):0.64,car?(suv?2.25:1.75):0.42);
