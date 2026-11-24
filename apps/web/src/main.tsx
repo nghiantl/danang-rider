@@ -5,8 +5,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 03.12.1 · WEBGL RECOVERY';
-const RELEASE_VERSION = '3.12.1';
+const SPRINT_LABEL = 'SPRINT 03.13 · COLLISION FEEDBACK';
+const RELEASE_VERSION = '3.13';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
 import { BUILDINGS, moveWithBuildingCollision } from './collision';
@@ -82,7 +82,8 @@ function Marker({at,color,label}:{at:THREE.Vector3;color:string;label:string}) {
   <mesh position={[0,3.5,0]}><cylinderGeometry args={[0.12,0.12,7,8]}/><meshBasicMaterial color={color} transparent opacity={0.55}/></mesh>
  </group>
 }
-function Rider({vehicle,gender,inputs,onTick,map,world,player,vehicles,people,hits}:{people:React.RefObject<PedestrianCollider[]>;hits:React.RefObject<PedestrianHit[]>;player:React.RefObject<Point>;vehicles:React.RefObject<VehicleCollider[]>;vehicle:VehicleType;gender:Gender;inputs:React.MutableRefObject<Record<InputKey,boolean>>;onTick:(s:{speed:number;distance:number;x:number;z:number;heading:number;fps:number})=>void;map:OSMMap|null;world:Map<string,Chunk>}) {
+function Rider({vehicle,gender,inputs,onTick,map,world,player,vehicles,people,hits,onCollision}:{onCollision:(strength:number,car:boolean)=>void;people:React.RefObject<PedestrianCollider[]>;hits:React.RefObject<PedestrianHit[]>;player:React.RefObject<Point>;vehicles:React.RefObject<VehicleCollider[]>;vehicle:VehicleType;gender:Gender;inputs:React.MutableRefObject<Record<InputKey,boolean>>;onTick:(s:{speed:number;distance:number;x:number;z:number;heading:number;fps:number})=>void;map:OSMMap|null;world:Map<string,Chunk>}) {
+ const impactTime=useRef(-10),shake=useRef(0);
  const group=useRef<THREE.Group>(null); const velocity=useRef(0);const heading=useRef(0);const distance=useRef(0);const lastUi=useRef(0);
  const frames=useRef(0), elapsed=useRef(0), fps=useRef(0);
  const collisionCache=useRef<{x:number;z:number;items:OSMMap['buildings']}|null>(null);
@@ -98,8 +99,9 @@ function Rider({vehicle,gender,inputs,onTick,map,world,player,vehicles,people,hi
    const dx=-Math.sin(heading.current)*velocity.current*dt;
    const dz=-Math.cos(heading.current)*velocity.current*dt;
    if(map&&(!collisionCache.current||collisionCache.current.x!==cell(g.position.x)||collisionCache.current.z!==cell(g.position.z)))collisionCache.current={x:cell(g.position.x),z:cell(g.position.z),items:obstaclesNear(world,g.position.x,g.position.z)};
-   let next=moveWithBuildingCollision(g.position.x,g.position.z,dx,dz,1.15,map?collisionCache.current?.items:undefined,map?map.extent+15:185,vehicles.current);
-   if(map){const water=riverGrid(map);if((water.blocked(next)&&!water.blocked(g.position))||(seaBlocked(map,next)&&!seaBlocked(map,g.position)))next={x:g.position.x,z:g.position.z,blocked:true};}
+   let next:ReturnType<typeof moveWithBuildingCollision>=moveWithBuildingCollision(g.position.x,g.position.z,dx,dz,1.15,map?collisionCache.current?.items:undefined,map?map.extent+15:185,vehicles.current);
+   if(next.vehicleHit&&Math.abs(velocity.current)>=1.5&&state.clock.elapsedTime-impactTime.current>0.65){const strength=Math.min(1,Math.abs(velocity.current)/14);impactTime.current=state.clock.elapsedTime;shake.current=strength;onCollision(strength,next.vehicleHit.halfLength>1);}
+   if(map){const water=riverGrid(map);if((water.blocked(next)&&!water.blocked(g.position))||(seaBlocked(map,next)&&!seaBlocked(map,g.position)))next={x:g.position.x,z:g.position.z,blocked:true,vehicleHit:undefined};}
    const impact=pedestrianImpact(g.position,next,Math.abs(velocity.current),people.current);if(impact){hits.current.push(impact);people.current=people.current.filter(p=>p.id!==impact.id);velocity.current*=0.35;}
    const travelled=Math.hypot(next.x-g.position.x,next.z-g.position.z);
    distance.current+=travelled;
@@ -113,7 +115,7 @@ function Rider({vehicle,gender,inputs,onTick,map,world,player,vehicles,people,hi
    const chase=5.5+Math.min(Math.abs(velocity.current)/21,1)*1.5;
    const behind=new THREE.Vector3(g.position.x+Math.sin(heading.current)*chase,3.8,g.position.z+Math.cos(heading.current)*chase);
    if(!cameraReady.current){camTarget.current.copy(behind);cameraReady.current=true;}
-   camTarget.current.lerp(behind,1-Math.exp(-dt*6));camera.position.copy(camTarget.current);
+   camTarget.current.lerp(behind,1-Math.exp(-dt*6));camera.position.copy(camTarget.current);if(shake.current>0.001&&!window.matchMedia('(prefers-reduced-motion: reduce)').matches){const a=shake.current*0.14;camera.position.x+=Math.sin(state.clock.elapsedTime*65)*a;camera.position.y+=Math.cos(state.clock.elapsedTime*83)*a;shake.current*=Math.exp(-dt*12);}
    camera.lookAt(g.position.x-Math.sin(heading.current)*2,1.35,g.position.z-Math.cos(heading.current)*2);
    if(state.clock.elapsedTime-lastUi.current>0.12){lastUi.current=state.clock.elapsedTime;onTick({speed:Math.abs(velocity.current)*3.6,distance:distance.current,x:g.position.x,z:g.position.z,heading:heading.current,fps:fps.current});}
  });
@@ -142,13 +144,16 @@ function Game({vehicle,gender,inputs,onTick,map,onStatus,audio,target,stage}:{ta
  const audioWeather=useRef({rain:0,night:false});
  const tick=(s:Telemetry)=>{audio.update(s.speed,vehicle==='electric',audioWeather.current.rain,audioWeather.current.night,vehicles.current.filter(v=>Math.hypot(v.x-s.x,v.z-s.z)<45).length/6);setPosition(p=>cell(p.x)===cell(s.x)&&cell(p.z)===cell(s.z)?p:{x:s.x,z:s.z});onTick(s)};
  const [contextLost,setContextLost]=useState(false);
+ const flash=useRef<HTMLDivElement>(null);const animation=useRef<Animation|null>(null);
+ const onCollision=React.useCallback((strength:number,car:boolean)=>{audio.collision(strength,car);if(typeof navigator.vibrate==='function')navigator.vibrate(Math.round(45+strength*100));if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches&&flash.current){animation.current?.cancel();animation.current=flash.current.animate([{opacity:strength*0.32},{opacity:0}],{duration:220,easing:'ease-out'});}},[audio]);
+ useEffect(()=>()=>animation.current?.cancel(),[]);
  const onLost=React.useCallback(()=>{for(const key of Object.keys(inputs.current) as InputKey[])inputs.current[key]=false;setContextLost(true)},[inputs]);const onRestored=React.useCallback(()=>setContextLost(false),[]);
  return <WebGLBoundary><Canvas fallback={<WebGLNotice message="Trình duyệt không hỗ trợ WebGL."/>} shadows={false} dpr={[0.85,1]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:false,powerPreference:'default',preserveDrawingBuffer:false}}>
   <ContextMonitor onLost={onLost} onRestored={onRestored}/>
   <color attach="background" args={['#a7d4e9']}/><fog attach="fog" args={['#a7d4e9',180,600]}/>
   <Environment map={map} player={player} onStatus={onStatus} audioWeather={audioWeather}/>
-  <AdaptiveResolution/><City map={map} world={world} position={position} target={target} stage={stage}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles} crossingPeople={crossingPeople}/>}{map&&<Pedestrians map={map} player={player} world={world} crossingPeople={crossingPeople} people={people} hits={hits}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles} people={people} hits={hits}/>
- </Canvas>{contextLost&&<WebGLNotice message="WebGL context bị mất. Game đang chờ trình duyệt phục hồi; nếu không tự phục hồi, hãy tải lại."/>}</WebGLBoundary>
+  <AdaptiveResolution/><City map={map} world={world} position={position} target={target} stage={stage}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles} crossingPeople={crossingPeople}/>}{map&&<Pedestrians map={map} player={player} world={world} crossingPeople={crossingPeople} people={people} hits={hits}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles} people={people} hits={hits} onCollision={onCollision}/>
+ </Canvas><div ref={flash} aria-hidden="true" style={{position:'absolute',inset:0,pointerEvents:'none',background:'#ff6347',opacity:0,zIndex:20}}/>{contextLost&&<WebGLNotice message="WebGL context bị mất. Game đang chờ trình duyệt phục hồi; nếu không tự phục hồi, hãy tải lại."/>}</WebGLBoundary>
 }
 type Telemetry={speed:number;distance:number;x:number;z:number;heading:number;fps:number};
 const fmt=(n:number)=>Math.round(n).toLocaleString('vi-VN');
