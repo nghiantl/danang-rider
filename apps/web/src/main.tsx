@@ -5,8 +5,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 03.10.1 · CHUNK OPTIMIZATION';
-const RELEASE_VERSION = '3.10.1';
+const SPRINT_LABEL = 'SPRINT 03.11 · CROSSWALKS';
+const RELEASE_VERSION = '3.11';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
 import { BUILDINGS, moveWithBuildingCollision } from './collision';
@@ -132,14 +132,14 @@ function AdaptiveResolution(){
 function Game({vehicle,gender,inputs,onTick,map,onStatus,audio,target,stage}:{target:Point;stage:string;audio:GameAudio;onStatus:(s:string)=>void;vehicle:VehicleType;gender:Gender;inputs:React.MutableRefObject<Record<InputKey,boolean>>;onTick:(s:Telemetry)=>void;map:OSMMap|null}){
  const world=useMemo(()=>map?buildWorld(map):new Map<string,Chunk>(),[map]);
  const [position,setPosition]=useState<Point>(map?.spawn||{x:0,z:-20});
- const vehicles=useRef<VehicleCollider[]>([]);
+ const vehicles=useRef<VehicleCollider[]>([]);const crossingPeople=useRef<Point[]>([]);
  const player=useRef<Point>(map?.spawn||{x:0,z:-20});
  const audioWeather=useRef({rain:0,night:false});
  const tick=(s:Telemetry)=>{audio.update(s.speed,vehicle==='electric',audioWeather.current.rain,audioWeather.current.night,vehicles.current.filter(v=>Math.hypot(v.x-s.x,v.z-s.z)<45).length/6);setPosition(p=>cell(p.x)===cell(s.x)&&cell(p.z)===cell(s.z)?p:{x:s.x,z:s.z});onTick(s)};
  return <Canvas shadows={false} dpr={[0.85,1.5]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:true}}>
   <color attach="background" args={['#a7d4e9']}/><fog attach="fog" args={['#a7d4e9',180,600]}/>
   <Environment map={map} player={player} onStatus={onStatus} audioWeather={audioWeather}/>
-  <AdaptiveResolution/><City map={map} world={world} position={position} target={target} stage={stage}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles}/>}{map&&<Pedestrians map={map} player={player} world={world}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles}/>
+  <AdaptiveResolution/><City map={map} world={world} position={position} target={target} stage={stage}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles} crossingPeople={crossingPeople}/>}{map&&<Pedestrians map={map} player={player} world={world} crossingPeople={crossingPeople}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles}/>
  </Canvas>;
 }
 type Telemetry={speed:number;distance:number;x:number;z:number;heading:number;fps:number};

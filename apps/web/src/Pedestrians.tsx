@@ -2,12 +2,14 @@ import {useMemo,useRef,useLayoutEffect} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
 import type {OSMMap,Point} from './osm';
+import {signalState} from './traffic';
 import {walkPaths,walkerPose,stepWalker,type Walker} from './pedestrians';
 import {type Chunk,obstaclesNear,cell} from './world';
 import {collidesWithBuildings} from './collision';
 const COUNT=24;
-export function Pedestrians({map,player,world}:{world:Map<string,Chunk>;map:OSMMap;player:React.RefObject<Point>}){
+export function Pedestrians({map,player,world,crossingPeople}:{crossingPeople:React.RefObject<Point[]>;world:Map<string,Chunk>;map:OSMMap;player:React.RefObject<Point>}){
  const paths=useMemo(()=>walkPaths(map.roads),[map]);
+ const stripes=useMemo(()=>paths.filter(p=>p.crossing).flatMap(p=>Array.from({length:Math.floor((p.length-1.4)/0.8)},(_,i)=>({x:p.a.x+p.ux*(1.1+i*0.8),z:p.a.z+p.uz*(1.1+i*0.8),angle:Math.atan2(p.ux,p.uz)}))),[paths]);
  const walkers=useRef<(Walker|null)[]>([]);
  const torso=useRef<THREE.InstancedMesh>(null),head=useRef<THREE.InstancedMesh>(null),limbs=useRef<THREE.InstancedMesh>(null);
  const dummy=useMemo(()=>new THREE.Object3D(),[]);
@@ -23,6 +25,7 @@ export function Pedestrians({map,player,world}:{world:Map<string,Chunk>;map:OSMM
  },[paths]);
  useFrame(({clock},raw)=>{
  if(!torso.current||!head.current||!limbs.current)return;
+ const crossing:Point[]=[];
  const p=player.current,dt=Math.min(raw,0.05);
  if(clock.elapsedTime-last.current>1){last.current=clock.elapsedTime;nearby.current=paths.flatMap((v,i)=>{const t=Math.max(0,Math.min(v.length,(p.x-v.a.x)*v.ux+(p.z-v.a.z)*v.uz));return Math.hypot(v.a.x+v.ux*t-p.x,v.a.z+v.uz*t-p.z)<110?[i]:[]})}
  const place=(mesh:THREE.InstancedMesh,i:number,x:number,y:number,z:number,h:number,w:number,l:number,d:number,tilt=0)=>{
@@ -34,7 +37,7 @@ export function Pedestrians({map,player,world}:{world:Map<string,Chunk>;map:OSMM
  w=null;
  for(let tries=0;tries<8&&nearby.current.length;tries++){
  const id=nearby.current[Math.floor(Math.random()*nearby.current.length)],path=paths[id];
- const candidate={path:id,t:Math.random()*path.length,direction:Math.random()<0.5?-1:1,speed:0.8+Math.random()*0.65,phase:Math.random()*6};
+ const candidate={path:id,t:path.crossing?0:Math.random()*path.length,direction:path.crossing?1:Math.random()<0.5?-1:1,speed:0.8+Math.random()*0.65,phase:Math.random()*6};
  const pos=walkerPose(candidate,path),dist=Math.hypot(pos.x-p.x,pos.z-p.z);
  if(dist>15&&dist<110&&clear(pos.x,pos.z)&&walkers.current.every(other=>{if(!other)return true;const o=walkerPose(other,paths[other.path]);return Math.hypot(o.x-pos.x,o.z-pos.z)>1.2})){w=candidate;break}
  }
@@ -42,8 +45,10 @@ export function Pedestrians({map,player,world}:{world:Map<string,Chunk>;map:OSMM
  }
  if(!w){place(torso.current,i,0,-100,0,0,0,0,0);place(head.current,i,0,-100,0,0,0,0,0);for(let j=0;j<4;j++)place(limbs.current,i*4+j,0,-100,0,0,0,0,0);continue}
  const path=paths[w.path],old={...w};
- let moving=stepWalker(w,path,p,dt);q=walkerPose(w,path);
+ const atEnd=w.t<=0.001||w.t>=path.length-0.001;const signal=path.crossing?signalState(path.crossing,path.axis??0,clock.elapsedTime):null;
+ let moving=(!atEnd||!signal||(signal.color==='red'&&signal.remaining>path.length/w.speed+1))&&stepWalker(w,path,path.crossing&&!atEnd?{x:Infinity,z:Infinity}:p,dt);q=walkerPose(w,path);
  if(moving&&!clear(q.x,q.z)){Object.assign(w,old);w.direction*=-1;q=walkerPose(w,path);moving=false}
+ if(path.crossing&&w.t>0.01&&w.t<path.length-0.01)crossing.push({x:q.x,z:q.z});
  const h=q.heading,scale=0.88+(i%5)*0.045,swing=moving?Math.sin(w.phase)*0.55:0;
  place(torso.current,i,q.x,1.16*scale+0.11,q.z,h,0.42*scale,0.58*scale,0.25*scale);
  place(head.current,i,q.x,1.65*scale+0.11,q.z,h,0.27*scale,0.32*scale,0.27*scale);
@@ -52,7 +57,10 @@ export function Pedestrians({map,player,world}:{world:Map<string,Chunk>;map:OSMM
  place(limbs.current,i*4+j,q.x+Math.cos(h)*x,(arm?1.12:0.46)*scale+0.11,q.z-Math.sin(h)*x,h,0.13*scale,(arm?0.48:0.69)*scale,0.15*scale,swing*side*(arm?-1:1));
  }
  }
+ crossingPeople.current=crossing;
  for(const mesh of [torso.current,head.current,limbs.current])mesh.instanceMatrix.needsUpdate=true;
  });
- return <group><instancedMesh ref={torso} args={[undefined,undefined,COUNT]} frustumCulled={false}><boxGeometry/><meshStandardMaterial/></instancedMesh><instancedMesh ref={head} args={[undefined,undefined,COUNT]} frustumCulled={false}><sphereGeometry args={[0.5,8,6]}/><meshStandardMaterial/></instancedMesh><instancedMesh ref={limbs} args={[undefined,undefined,COUNT*4]} frustumCulled={false}><boxGeometry/><meshStandardMaterial color="#34424d"/></instancedMesh></group>
+ return <group>{stripes.length>0&&<CrosswalkMarks stripes={stripes}/>}<instancedMesh ref={torso} args={[undefined,undefined,COUNT]} frustumCulled={false}><boxGeometry/><meshStandardMaterial/></instancedMesh><instancedMesh ref={head} args={[undefined,undefined,COUNT]} frustumCulled={false}><sphereGeometry args={[0.5,8,6]}/><meshStandardMaterial/></instancedMesh><instancedMesh ref={limbs} args={[undefined,undefined,COUNT*4]} frustumCulled={false}><boxGeometry/><meshStandardMaterial color="#34424d"/></instancedMesh></group>
 }
+
+function CrosswalkMarks({stripes}:{stripes:{x:number;z:number;angle:number}[]}){const ref=useRef<THREE.InstancedMesh>(null);useLayoutEffect(()=>{const d=new THREE.Object3D();stripes.forEach((s,i)=>{d.position.set(s.x,0.095,s.z);d.rotation.set(0,s.angle,0);d.updateMatrix();ref.current?.setMatrixAt(i,d.matrix)});if(ref.current){ref.current.instanceMatrix.needsUpdate=true;ref.current.computeBoundingSphere()}},[stripes]);return <instancedMesh ref={ref} args={[undefined,undefined,stripes.length]}><boxGeometry args={[2.5,0.012,0.42]}/><meshStandardMaterial color="#eeeae0"/></instancedMesh>}

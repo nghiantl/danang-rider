@@ -45,7 +45,7 @@ export function signalApproaches(lanes:Lane[],signals:Map<string,Signal>){
 export function junctionRadius(l:Lane,lanes:Lane[]){return Math.max(5,l.width/2+1,...l.next.map(i=>lanes[i].width/2+1))}
 export function stopPosition(c:Car,l:Lane,lanes:Lane[]){return Math.max(0,l.length-junctionRadius(l,lanes)-(c.kind===1?1.8:0.825)-0.5)}
 export function insideJunction(l:Lane,t:number,lanes:Lane[],signals:Map<string,Signal>){return (signals.has(key(l.b))&&l.length-t<junctionRadius(l,lanes)+2)||(signals.has(key(l.a))&&t<Math.max(5,l.width/2+1)+2)}
-export function desiredSpeed(c:Car,lanes:Lane[],others:Car[],player:Point,signals:Map<string,Signal>,time:number){
+export function desiredSpeed(c:Car,lanes:Lane[],others:Car[],player:Point,signals:Map<string,Signal>,time:number,crossingPeople:Point[]=[]){
  const l=lanes[c.lane],q=pose(l,c.t);let gap=Infinity;
  const signal=signals.get(key(l.b));
  if(signal){
@@ -57,6 +57,7 @@ export function desiredSpeed(c:Car,lanes:Lane[],others:Car[],player:Point,signal
  }
  const consider=(p:Point,clearance:number)=>{const dx=p.x-q.x,dz=p.z-q.z,along=dx*l.ux+dz*l.uz,side=Math.abs(-dx*l.uz+dz*l.ux);if(along>=0&&side<2)gap=Math.min(gap,Math.max(0,along-clearance))};
  consider(player,3.5);
+ for(const person of crossingPeople)consider(person,c.kind===1?4:2.5);
  for(const other of others)if(other&&other!==c){const ol=lanes[other.lane];if(ol.ux*l.ux+ol.uz*l.uz>0.5)consider(pose(ol,other.t),other.kind===1?5:3);}
  return Math.min(c.cruise??8,Math.sqrt(2*4*gap),gap/0.8);
 }
