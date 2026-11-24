@@ -15,6 +15,7 @@ import { RiderModel } from './riderModel';
 
 import { GPS } from './GPS';
 import { Traffic } from './Traffic';
+import { Pedestrians } from './Pedestrians';
 
 type VehicleType = 'petrol' | 'electric';
 type Gender = 'male' | 'female';
@@ -118,7 +119,7 @@ function Game({vehicle,gender,inputs,onTick,map}:{vehicle:VehicleType;gender:Gen
  return <Canvas shadows={false} dpr={[1,1.5]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:true}}>
   <color attach="background" args={['#a7d4e9']}/><fog attach="fog" args={['#a7d4e9',180,600]}/>
   <hemisphereLight args={['#dceeff','#a49b83',2.1]}/><directionalLight position={[80,140,50]} intensity={2.2}/>
-  <City map={map} world={world} position={position}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles}/>
+  <City map={map} world={world} position={position}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles}/>}{map&&<Pedestrians map={map} player={player}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles}/>
  </Canvas>;
 }
 type Telemetry={speed:number;distance:number;x:number;z:number;heading:number;fps:number};
