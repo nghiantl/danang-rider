@@ -4,7 +4,7 @@ import {buildGraph,missionPoints} from './navigation.ts';
 export type Point = { x: number; z: number };
 export type Road = { points: Point[]; width: number; name: string; kind?: string; oneway?: number; bridge?: boolean };
 export type Footprint = { x: number; z: number; halfX: number; halfZ: number; height: number; outline?: Point[]; kind?: string };
-export type OSMMap = { roads: Road[]; buildings: Footprint[]; pickup: Point; delivery: Point; spawn: Point; extent: number };
+export type OSMMap = { roads: Road[]; buildings: Footprint[]; pickup: Point; delivery: Point; spawn: Point; extent: number; bounds?:number[] };
 const CENTER_LAT = 16.0678;
 const CENTER_LON = 108.2208;
 const LAT_METERS = 111320;
@@ -54,7 +54,7 @@ export function parseOSM(elements: Element[], bounds?:number[]): OSMMap {
   const mission=missionPoints(buildGraph(roads),p=>Math.abs(p.x)<extent-8&&Math.abs(p.z)<extent-8&&!buildings.some(b=>Math.abs(p.x-b.x)<b.halfX+2&&Math.abs(p.z-b.z)<b.halfZ+2));
   if(!mission)throw new Error('OSM roads insufficient for connected gameplay');
   const {spawn,pickup,delivery}=mission;
-  return {roads,buildings,pickup,delivery,spawn,extent};
+  return {roads,buildings,pickup,delivery,spawn,extent,bounds};
 }
 // Try independent public Overpass instances. GET avoids POST preflight on mobile Safari.
 // Keep a short per-server timeout and report failures instead of silently hiding them.
@@ -68,8 +68,8 @@ export async function loadBundledDaNangMap(signal?: AbortSignal): Promise<OSMMap
   // Never treat an empty or missing snapshot as a valid city.
   const response=await fetch(import.meta.env.BASE_URL+'data/danang-osm.json',{signal,cache:'default'});
   if(!response.ok)throw new Error('OSM snapshot HTTP '+response.status);
-  const data: {elements?:Element[]}=await response.json();
-  return parseOSM(data.elements||[],[108.2152,16.0516,108.2376,16.0732]);
+  const data: {elements?:Element[];bounds?:number[]}=await response.json();
+  return parseOSM(data.elements||[],data.bounds??[108.2152,16.0516,108.2376,16.0732]);
 }
 export async function loadDaNangMap(signal?: AbortSignal): Promise<OSMMap> {
   try { return await loadBundledDaNangMap(signal); } catch(error) {
