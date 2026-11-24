@@ -5,8 +5,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 03.12 · PEDESTRIAN COLLISION';
-const RELEASE_VERSION = '3.12';
+const SPRINT_LABEL = 'SPRINT 03.12.1 · WEBGL RECOVERY';
+const RELEASE_VERSION = '3.12.1';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
 import { BUILDINGS, moveWithBuildingCollision } from './collision';
@@ -126,11 +126,14 @@ function AdaptiveResolution(){
  const {gl,setDpr}=useThree();const sample=useRef({elapsed:0,frames:0,cooldown:0});
  useFrame((_,dt)=>{const s=sample.current;if(dt>0.25){s.elapsed=0;s.frames=0;return} s.elapsed+=dt;s.frames++;if(s.elapsed<3)return;
  const fps=s.frames/s.elapsed;s.elapsed=0;s.frames=0;if(s.cooldown>0){s.cooldown--;return}
- const current=gl.getPixelRatio(),max=Math.min(1.5,window.devicePixelRatio||1);
+ const current=gl.getPixelRatio(),max=Math.min(1.25,window.devicePixelRatio||1);
  const next=fps<38?Math.max(0.85,current-0.15):fps>55?Math.min(max,current+0.1):current;
  if(Math.abs(next-current)>0.01){setDpr(next);s.cooldown=2}
  });return null;
 }
+function WebGLNotice({message}:{message:string}){return <div role="alert" style={{position:'absolute',inset:0,zIndex:1000,display:'grid',placeItems:'center',background:'#111827',color:'white',padding:24,textAlign:'center'}}><div><h2>Không thể hiển thị đồ họa 3D</h2><p>{message}</p><p>Nếu vẫn lỗi, đóng các tab game khác và khởi động lại trình duyệt.</p><button onClick={()=>window.location.reload()}>Tải lại game</button></div></div>}
+class WebGLBoundary extends React.Component<{children:React.ReactNode},{failed:boolean}>{state={failed:false};static getDerivedStateFromError(){return {failed:true}};render(){return this.state.failed?<WebGLNotice message="Không tạo được WebGL context. Hãy thử tải lại game."/>:this.props.children}}
+function ContextMonitor({onLost,onRestored}:{onLost:()=>void;onRestored:()=>void}){const {gl,setFrameloop}=useThree();useEffect(()=>{const canvas=gl.domElement;const lost=(e:Event)=>{e.preventDefault();setFrameloop('never');onLost()};const restored=()=>{setFrameloop('always');onRestored()};canvas.addEventListener('webglcontextlost',lost);canvas.addEventListener('webglcontextrestored',restored);return()=>{canvas.removeEventListener('webglcontextlost',lost);canvas.removeEventListener('webglcontextrestored',restored)}},[gl,setFrameloop,onLost,onRestored]);return null}
 function Game({vehicle,gender,inputs,onTick,map,onStatus,audio,target,stage}:{target:Point;stage:string;audio:GameAudio;onStatus:(s:string)=>void;vehicle:VehicleType;gender:Gender;inputs:React.MutableRefObject<Record<InputKey,boolean>>;onTick:(s:Telemetry)=>void;map:OSMMap|null}){
  const world=useMemo(()=>map?buildWorld(map):new Map<string,Chunk>(),[map]);
  const [position,setPosition]=useState<Point>(map?.spawn||{x:0,z:-20});
@@ -138,11 +141,14 @@ function Game({vehicle,gender,inputs,onTick,map,onStatus,audio,target,stage}:{ta
  const player=useRef<Point>(map?.spawn||{x:0,z:-20});
  const audioWeather=useRef({rain:0,night:false});
  const tick=(s:Telemetry)=>{audio.update(s.speed,vehicle==='electric',audioWeather.current.rain,audioWeather.current.night,vehicles.current.filter(v=>Math.hypot(v.x-s.x,v.z-s.z)<45).length/6);setPosition(p=>cell(p.x)===cell(s.x)&&cell(p.z)===cell(s.z)?p:{x:s.x,z:s.z});onTick(s)};
- return <Canvas shadows={false} dpr={[0.85,1.5]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:true}}>
+ const [contextLost,setContextLost]=useState(false);
+ const onLost=React.useCallback(()=>{for(const key of Object.keys(inputs.current) as InputKey[])inputs.current[key]=false;setContextLost(true)},[inputs]);const onRestored=React.useCallback(()=>setContextLost(false),[]);
+ return <WebGLBoundary><Canvas fallback={<WebGLNotice message="Trình duyệt không hỗ trợ WebGL."/>} shadows={false} dpr={[0.85,1]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:false,powerPreference:'default',preserveDrawingBuffer:false}}>
+  <ContextMonitor onLost={onLost} onRestored={onRestored}/>
   <color attach="background" args={['#a7d4e9']}/><fog attach="fog" args={['#a7d4e9',180,600]}/>
   <Environment map={map} player={player} onStatus={onStatus} audioWeather={audioWeather}/>
   <AdaptiveResolution/><City map={map} world={world} position={position} target={target} stage={stage}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles} crossingPeople={crossingPeople}/>}{map&&<Pedestrians map={map} player={player} world={world} crossingPeople={crossingPeople} people={people} hits={hits}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles} people={people} hits={hits}/>
- </Canvas>;
+ </Canvas>{contextLost&&<WebGLNotice message="WebGL context bị mất. Game đang chờ trình duyệt phục hồi; nếu không tự phục hồi, hãy tải lại."/>}</WebGLBoundary>
 }
 type Telemetry={speed:number;distance:number;x:number;z:number;heading:number;fps:number};
 const fmt=(n:number)=>Math.round(n).toLocaleString('vi-VN');
