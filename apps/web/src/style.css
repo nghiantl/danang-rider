@@ -11,3 +11,8 @@
 .horn{position:absolute;right:20px;bottom:100px;border:1px solid #b0d2d9a8;border-radius:50%;width:44px;height:44px;background:#172c3bba;color:white;font-size:19px;touch-action:manipulation}.horn:active{background:#4ce4c3}@media(max-height:430px){.horn{bottom:70px;right:20px}}
 
 .phone{max-height:85dvh;overflow-y:auto;overscroll-behavior:contain}.order-card{padding:8px;border:1px solid #52636e;border-radius:8px;margin:8px 0}.order-card p{margin:5px 0}
+
+/* Interactive GPS inside the otherwise click-through HUD. */
+.topbar .gps-panel{pointer-events:auto;touch-action:manipulation;user-select:none;-webkit-user-select:none}
+.gps-map [role=button]{pointer-events:all;cursor:pointer;touch-action:manipulation}
+.gps-panel select{pointer-events:auto;touch-action:manipulation;min-height:28px}
