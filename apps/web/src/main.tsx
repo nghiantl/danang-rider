@@ -6,7 +6,7 @@ import './style.css';
 import { BUILDINGS, moveWithBuildingCollision } from './collision';
 import { loadDaNangMap, type OSMMap, type Point } from './osm';
 
-import { buildWorld, nearby, obstaclesNear, cell, type Chunk } from './world';
+import { buildWorld, nearby, obstaclesNear, cell, CHUNK_SIZE, type Chunk } from './world';
 
 type VehicleType = 'petrol' | 'electric';
 type Gender = 'male' | 'female';
@@ -45,7 +45,7 @@ function OSMBuilding({b,index}:{b:OSMMap['buildings'][number];index:number}) {
 }
 function City({map,world,position}:{map:OSMMap|null;world:Map<string,Chunk>;position:Point}) {
   const cx=cell(position.x),cz=cell(position.z);
-  const active=useMemo(()=>nearby(world,cx*500,cz*500),[world,cx,cz]);
+  const active=useMemo(()=>nearby(world,cx*CHUNK_SIZE,cz*CHUNK_SIZE),[world,cx,cz]);
   if(map)return <group>
     <mesh rotation={[-Math.PI/2,0,0]} receiveShadow><planeGeometry args={[map.extent*2+150,map.extent*2+150]}/><meshStandardMaterial color="#829c83"/></mesh>
     {active.flatMap(c=>c.segments).map((p,i)=><mesh key={p.x+':'+p.z+':'+i} rotation={[-Math.PI/2,0,-p.angle]} position={[p.x,0.07,p.z]}><planeGeometry args={[p.length,p.width]}/><meshStandardMaterial color="#394750" side={THREE.DoubleSide}/></mesh>)}
@@ -82,6 +82,7 @@ function Marker({at,color,label}:{at:THREE.Vector3;color:string;label:string}) {
 function Rider({vehicle,gender,inputs,onTick,map,world}:{vehicle:VehicleType;gender:Gender;inputs:React.MutableRefObject<Record<InputKey,boolean>>;onTick:(s:{speed:number;distance:number;x:number;z:number;heading:number;fps:number})=>void;map:OSMMap|null;world:Map<string,Chunk>}) {
  const group=useRef<THREE.Group>(null); const velocity=useRef(0);const heading=useRef(0);const distance=useRef(0);const lastUi=useRef(0);
  const frames=useRef(0), elapsed=useRef(0), fps=useRef(0);
+ const collisionCache=useRef<{x:number;z:number;items:OSMMap['buildings']}|null>(null);
  const {camera}=useThree(); const camTarget=useRef(new THREE.Vector3());
  useFrame((state,dtRaw)=>{
    frames.current++;elapsed.current+=dtRaw;if(elapsed.current>=1){fps.current=Math.round(frames.current/elapsed.current);frames.current=0;elapsed.current=0;}
@@ -93,7 +94,8 @@ function Rider({vehicle,gender,inputs,onTick,map,world}:{vehicle:VehicleType;gen
    heading.current+=steer*dt*1.35*Math.min(1,Math.abs(velocity.current)/4);
    const dx=-Math.sin(heading.current)*velocity.current*dt;
    const dz=-Math.cos(heading.current)*velocity.current*dt;
-   const next=moveWithBuildingCollision(g.position.x,g.position.z,dx,dz,1.15,map?obstaclesNear(world,g.position.x,g.position.z):undefined,map?map.extent+15:185);
+   if(map&&(!collisionCache.current||collisionCache.current.x!==cell(g.position.x)||collisionCache.current.z!==cell(g.position.z)))collisionCache.current={x:cell(g.position.x),z:cell(g.position.z),items:obstaclesNear(world,g.position.x,g.position.z)};
+   const next=moveWithBuildingCollision(g.position.x,g.position.z,dx,dz,1.15,map?collisionCache.current?.items:undefined,map?map.extent+15:185);
    distance.current+=Math.hypot(next.x-g.position.x,next.z-g.position.z);
    g.position.x=next.x;
    g.position.z=next.z;
