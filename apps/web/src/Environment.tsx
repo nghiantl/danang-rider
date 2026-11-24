@@ -4,7 +4,7 @@ import * as THREE from 'three';
 import type {OSMMap,Point} from './osm';
 import {environmentAt,clockLabel,parseWeather,validCache,weatherLabel,WEATHER_URL,REFRESH_MS,CACHE_KEY,type Weather} from './environment';
 const RAIN=350,LAMPS=12;
-export function Environment({map,player,onStatus}:{map:OSMMap|null;player:React.RefObject<Point>;onStatus:(s:string)=>void}){
+export function Environment({map,player,onStatus,audioWeather}:{audioWeather:React.RefObject<{rain:number;night:boolean}>;map:OSMMap|null;player:React.RefObject<Point>;onStatus:(s:string)=>void}){
  const {scene}=useThree();
  const hemi=useRef<THREE.HemisphereLight>(null),sun=useRef<THREE.DirectionalLight>(null),rain=useRef<THREE.LineSegments>(null);
  const lamps=useRef<THREE.InstancedMesh>(null),lights=useRef<(THREE.PointLight|null)[]>([]);
@@ -33,6 +33,7 @@ export function Environment({map,player,onStatus}:{map:OSMMap|null;player:React.
  wet.current+=((weather.current?.rain??0)-wet.current)*(1-Math.exp(-dt*0.8));
  cloud.current+=((weather.current?.cloud??0)-cloud.current)*(1-Math.exp(-dt*0.5));
  mist.current+=((weather.current?.fog??0)-mist.current)*(1-Math.exp(-dt*0.5));
+ audioWeather.current.rain=wet.current;audioWeather.current.night=e.night;
  colors.sky.copy(colors.night).lerp(colors.day,e.daylight).lerp(colors.dusk,e.twilight*0.55).lerp(colors.gray,cloud.current*e.daylight*0.65);
  if(scene.background instanceof THREE.Color)scene.background.copy(colors.sky);else scene.background=colors.sky.clone();
  if(scene.fog instanceof THREE.Fog){scene.fog.color.copy(colors.sky);scene.fog.near=180-100*Math.max(wet.current,mist.current);scene.fog.far=600-450*Math.max(wet.current,mist.current)}
