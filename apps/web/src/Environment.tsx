@@ -26,7 +26,10 @@ export function Environment({map,player,onStatus,audioWeather}:{audioWeather:Rea
  const drops=useMemo(()=>Array.from({length:RAIN},()=>({x:Math.random()*40-20,y:Math.random()*18,z:Math.random()*40-20})),[]);
  const geometry=useMemo(()=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(RAIN*6),3));return g},[]);
  const dummy=useMemo(()=>new THREE.Object3D(),[]);
- const locations=useMemo(()=>{const out:Point[]=[];if(map)for(const r of map.roads){if(r.width<8)continue;for(let i=1;i<r.points.length;i++){const a=r.points[i-1],b=r.points[i],len=Math.hypot(b.x-a.x,b.z-a.z);if(len<18)continue;const ux=(b.x-a.x)/len,uz=(b.z-a.z)/len;for(let t=9;t<len-5;t+=30)out.push({x:a.x+ux*t-uz*(r.width/2+1.5),z:a.z+uz*t+ux*(r.width/2+1.5)})}}return out},[map]);
+ const locations=useMemo(()=>{const out:Point[]=[];if(map)for(const r of map.roads){if(r.width<8)continue;for(let i=1;i<r.points.length;i++){const a=r.points[i-1],b=r.points[i],len=Math.hypot(b.x-a.x,b.z-a.z);if(len<18)continue;const ux=(b.x-a.x)/len,uz=(b.z-a.z)/len;for(let t=9;t<len-5;t+=30)out.push({x:a.x+ux*t-uz*(r.width/2+1.5),z:a.z+uz*t+ux*(r.width/2+1.5)})}}if(!map)return out;
+ const segments=map.roads.flatMap(r=>r.points.slice(1).map((b,i)=>({a:r.points[i],b,width:r.width})));
+ return out.filter(p=>!segments.some(({a,b,width})=>{const dx=b.x-a.x,dz=b.z-a.z,l=dx*dx+dz*dz;if(!l)return false;const t=Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.z-a.z)*dz)/l));return Math.hypot(p.x-a.x-t*dx,p.z-a.z-t*dz)<width/2+0.65})&&!map.buildings.some(b=>Math.abs(p.x-b.x)<b.halfX+0.5&&Math.abs(p.z-b.z)<b.halfZ+0.5));
+ },[map]);
  useFrame((_,raw)=>{
  const dt=Math.min(raw,0.05);elapsed.current+=dt;
  const now=new Date(),e=environmentAt(now),p=player.current;
