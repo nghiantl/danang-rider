@@ -28,3 +28,16 @@ test('movement remains inside world boundary', () => {
   const result = moveWithBuildingCollision(180, 0, 100, 0);
   assert.equal(result.x, 185);
 });
+
+const diamond={x:0,z:0,halfX:10,halfZ:10,outline:[{x:0,z:-10},{x:10,z:0},{x:0,z:10},{x:-10,z:0},{x:0,z:-10}]};
+test('empty corner of rotated building bounds is driveable',()=>{
+ assert.equal(collidesWithBuildings(8,8,1.15,[diamond]),false);
+ const r=moveWithBuildingCollision(7,8,8,0,1.15,[diamond]);
+ assert.equal(r.blocked,false);assert.ok(Math.abs(r.x-15)<1e-8);
+});
+test('polygon interior and wall clearance remain solid',()=>{
+ assert.equal(collidesWithBuildings(0,0,1.15,[diamond]),true);
+ assert.equal(collidesWithBuildings(5.5,5.5,1.15,[diamond]),true);
+ const r=moveWithBuildingCollision(20,0,-40,0,1.15,[diamond]);
+ assert.ok(r.blocked);assert.ok(r.x>=11.15);
+});
