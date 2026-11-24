@@ -5,8 +5,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 03.8 · MULTIPLE ORDERS';
-const RELEASE_VERSION = '3.8';
+const SPRINT_LABEL = 'SPRINT 03.9 · VEHICLE VISUAL';
+const RELEASE_VERSION = '3.9';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
 import { BUILDINGS, moveWithBuildingCollision } from './collision';
