@@ -6,7 +6,7 @@ import * as THREE from 'three';
 import './style.css';
 
 const SPRINT_LABEL = 'SPRINT 03.7.3.1 · DRAGON HEAD FIX';
-const RELEASE_VERSION = '3.7.3.1';
+const RELEASE_VERSION = '3.7.4';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
 import { BUILDINGS, moveWithBuildingCollision } from './collision';
@@ -23,6 +23,8 @@ import { Traffic } from './Traffic';
 import { Pedestrians } from './Pedestrians';
 import { GameAudio } from './gameAudio';
 import { riverGrid } from './riverGeometry';
+import { Beach } from './Beach';
+import { seaBlocked } from './coast';
 import { Landmarks } from './Landmarks';
 import { Environment } from './Environment';
 
@@ -52,7 +54,7 @@ function City({map,world,position}:{map:OSMMap|null;world:Map<string,Chunk>;posi
   const active=useMemo(()=>nearby(world,cx*CHUNK_SIZE,cz*CHUNK_SIZE),[world,cx,cz]);
   if(map)return <group>
     <mesh rotation={[-Math.PI/2,0,0]} receiveShadow><planeGeometry args={[map.extent*2+150,map.extent*2+150]}/><meshStandardMaterial color="#a0a58c"/></mesh>
-    <CityDetail chunks={active}/><Landmarks map={map} position={position}/>
+    <CityDetail chunks={active}/><Landmarks map={map} position={position}/><Beach map={map} position={position}/>
     <Marker at={new THREE.Vector3(map.pickup.x,0,map.pickup.z)} color="#ffd45a" label="NHẬN HÀNG"/>
     <Marker at={new THREE.Vector3(map.delivery.x,0,map.delivery.z)} color="#42e3aa" label="GIAO HÀNG"/>
   </group>;
@@ -99,7 +101,7 @@ function Rider({vehicle,gender,inputs,onTick,map,world,player,vehicles}:{player:
    const dz=-Math.cos(heading.current)*velocity.current*dt;
    if(map&&(!collisionCache.current||collisionCache.current.x!==cell(g.position.x)||collisionCache.current.z!==cell(g.position.z)))collisionCache.current={x:cell(g.position.x),z:cell(g.position.z),items:obstaclesNear(world,g.position.x,g.position.z)};
    let next=moveWithBuildingCollision(g.position.x,g.position.z,dx,dz,1.15,map?collisionCache.current?.items:undefined,map?map.extent+15:185,vehicles.current);
-   if(map){const water=riverGrid(map);if(water.blocked(next)&&!water.blocked(g.position))next={x:g.position.x,z:g.position.z,blocked:true};}
+   if(map){const water=riverGrid(map);if((water.blocked(next)&&!water.blocked(g.position))||(seaBlocked(map,next)&&!seaBlocked(map,g.position)))next={x:g.position.x,z:g.position.z,blocked:true};}
    const travelled=Math.hypot(next.x-g.position.x,next.z-g.position.z);
    distance.current+=travelled;
    motion.current.distance+=travelled*Math.sign(velocity.current);

@@ -12,4 +12,4 @@ test('official OSM XML nodes and ways become game-compatible geometry',()=>{
 });
 test('rejects incomplete or non-road snapshots',()=>assert.throws(()=>validateSnapshot(parseOsmXml('<osm/>')),/Insufficient/));
 
-test('four extracts merge duplicate way IDs',()=>{const a={type:'way',id:'1',geometry:[],tags:{highway:'primary'}},b={...a,id:'2'};assert.equal(tiles.length,4);assert.deepEqual(mergeSnapshots([{elements:[a]},{elements:[a,b]}]).elements,[a,b])});
+test('six extracts merge duplicate way IDs',()=>{const a={type:'way',id:'1',geometry:[],tags:{highway:'primary'}},b={...a,id:'2'};assert.equal(tiles.length,6);assert.deepEqual(mergeSnapshots([{elements:[a]},{elements:[a,b]}]).elements,[a,b])});
