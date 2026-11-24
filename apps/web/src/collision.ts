@@ -18,7 +18,8 @@ export const BUILDINGS = getBuildings();
 
 export type Obstacle = { x:number; z:number; halfX:number; halfZ:number; outline?: {x:number;z:number}[] };
 export function collidesWithBuildings(x: number, z: number, radius: number = RIDER_RADIUS, obstacles?: Obstacle[]) {
-  for (const b of (obstacles || BUILDINGS.map(v=>({...v,halfX:BUILDING_HALF_SIZE,halfZ:BUILDING_HALF_SIZE})))) {
+  const candidates: Obstacle[] = obstacles ?? BUILDINGS.map(v=>({...v,halfX:BUILDING_HALF_SIZE,halfZ:BUILDING_HALF_SIZE}));
+  for (const b of candidates) {
     const nearestX = Math.max(b.x - b.halfX, Math.min(x, b.x + b.halfX));
     const nearestZ = Math.max(b.z - b.halfZ, Math.min(z, b.z + b.halfZ));
     if ((x - nearestX) ** 2 + (z - nearestZ) ** 2 >= radius ** 2) continue;
