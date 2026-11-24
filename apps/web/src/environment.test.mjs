@@ -1,8 +1,11 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {environmentAt,clockLabel} from './environment.ts';
-test('starts at 08:00 and wraps after 12 minutes',()=>{assert.equal(environmentAt(0).hour,8);assert.equal(environmentAt(720).hour,8)});
-test('night and daylight',()=>{assert.equal(environmentAt(0).daylight,1);assert.equal(environmentAt(480).night,true);assert.equal(environmentAt(480).daylight,0)});
-test('twilight is gradual',()=>{assert.equal(environmentAt(300).daylight,0.5);assert.equal(environmentAt(300).twilight,1)});
-test('weather cycles',()=>{assert.deepEqual([0,120,240,360,480].map(t=>environmentAt(t).weather),['sunny','cloudy','rain','cloudy','sunny'])});
-test('clock formatting',()=>{assert.equal(clockLabel(8.5),'08:30');assert.equal(clockLabel(0),'00:00')});
+import {environmentAt,clockLabel,parseWeather,validCache,weatherLabel,REFRESH_MS} from './environment.ts';
+const date=(h,m=0,s=0)=>new Date(2026,10,24,h,m,s);
+const data=(code,precipitation=0)=>({current:{temperature_2m:25,weather_code:code,cloud_cover:50,precipitation}});
+test('device clock progresses at real rate',()=>{assert.equal(clockLabel(date(8,0,23)),'08:00');assert.equal(clockLabel(date(8,1)),'08:01');assert.ok(Math.abs(environmentAt(date(8,0,23)).hour-8-23/3600)<1e-9)});
+test('midnight and daylight',()=>{assert.equal(environmentAt(date(0)).night,true);assert.equal(environmentAt(date(12)).daylight,1);assert.equal(clockLabel(date(0)),'00:00')});
+test('twilight is gradual',()=>{assert.equal(environmentAt(date(6)).daylight,0.5);assert.equal(environmentAt(date(18)).twilight,1)});
+test('weather mapping',()=>{assert.equal(parseWeather(data(0)).rain,0);assert.equal(parseWeather(data(61)).rain,0.45);assert.equal(parseWeather(data(65)).rain,1);assert.equal(parseWeather(data(45)).fog,0.8);assert.equal(parseWeather(data(95)).rain,1)});
+test('reject malformed weather',()=>{assert.throws(()=>parseWeather({}));assert.throws(()=>parseWeather({current:{temperature_2m:null}}));assert.equal(validCache({}),false)});
+test('cached and offline status',()=>{const w=parseWeather(data(3),1000);assert.equal(validCache(w),true);assert.match(weatherLabel(w,true),/Dữ liệu cũ/);assert.match(weatherLabel(w,false,1000+REFRESH_MS*3),/Dữ liệu cũ/);assert.match(weatherLabel(null,true),/Ngoại tuyến/);assert.doesNotMatch(weatherLabel(w,false,1001),/Dữ liệu cũ/)});
