@@ -1,3 +1,4 @@
+import {clearRoadBuildings} from './buildingGeometry.ts';
 import {buildGraph,missionPoints} from './navigation.ts';
 // Real OpenStreetMap geometry loaded at runtime; no API key required.
 // The area is deliberately small to keep iPhone rendering affordable.
@@ -32,7 +33,7 @@ export function clipRoad(points:Point[],bounds:number[]):Point[][]{
 }
 export function parseOSM(elements: Element[], bounds?:number[]): OSMMap {
   const roads: Road[] = [];
-  const buildings: Footprint[] = [];
+  let buildings: Footprint[] = [];
   for (const element of elements) {
     if (element.type !== 'way' || !element.geometry || element.geometry.length < 2) continue;
     const points = element.geometry.map(p => project(p.lat,p.lon));
@@ -49,6 +50,7 @@ export function parseOSM(elements: Element[], bounds?:number[]): OSMMap {
       }
     }
   }
+  buildings=clearRoadBuildings(buildings,roads);
   // Choose targets along the actual road network, not inside building footprints.
   let extent=200;for(const r of roads)for(const p of r.points)extent=Math.max(extent,Math.abs(p.x),Math.abs(p.z));
   const mission=missionPoints(buildGraph(roads),p=>Math.abs(p.x)<extent-8&&Math.abs(p.z)<extent-8&&!buildings.some(b=>Math.abs(p.x-b.x)<b.halfX+2&&Math.abs(p.z-b.z)<b.halfZ+2));
