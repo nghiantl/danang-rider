@@ -1,3 +1,4 @@
+import {blocksVehicleMove,type VehicleCollider} from './vehicleCollision.ts';
 // Sprint 1.1: lightweight 2D collision for static buildings.
 // Coordinates are in game-world metres; building footprints are 14 x 14.
 export const BUILDING_HALF_SIZE = 7;
@@ -40,21 +41,21 @@ export function collidesWithBuildings(x: number, z: number, radius: number = RID
 
 // Move in small increments to avoid tunnelling at high speed.
 // Resolve each axis independently to allow natural wall sliding.
-export function moveWithBuildingCollision(x: number, z: number, dx: number, dz: number, radius: number = RIDER_RADIUS, obstacles?: Obstacle[], worldLimit: number = WORLD_LIMIT) {
+export function moveWithBuildingCollision(x: number, z: number, dx: number, dz: number, radius: number = RIDER_RADIUS, obstacles?: Obstacle[], worldLimit: number = WORLD_LIMIT, vehicles:VehicleCollider[] = []) {
   let nextX = x;
   let nextZ = z;
-  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dz) / Math.max(radius * 0.5, 0.1)));
+  const steps = Math.max(1, Math.ceil(Math.hypot(dx, dz) / Math.max(radius * 0.25, 0.1)));
   const stepX = dx / steps;
   const stepZ = dz / steps;
   let blocked = false;
   for (let i = 0; i < steps; i++) {
     const candidateX = Math.max(-worldLimit, Math.min(worldLimit, nextX + stepX));
     if(candidateX!==nextX+stepX)blocked=true;
-    if (!collidesWithBuildings(candidateX, nextZ, radius, obstacles)) nextX = candidateX;
+    if (!collidesWithBuildings(candidateX, nextZ, radius, obstacles) && !blocksVehicleMove(nextX,nextZ,candidateX,nextZ,radius,vehicles)) nextX = candidateX;
     else blocked = true;
     const candidateZ = Math.max(-worldLimit, Math.min(worldLimit, nextZ + stepZ));
     if(candidateZ!==nextZ+stepZ)blocked=true;
-    if (!collidesWithBuildings(nextX, candidateZ, radius, obstacles)) nextZ = candidateZ;
+    if (!collidesWithBuildings(nextX, candidateZ, radius, obstacles) && !blocksVehicleMove(nextX,nextZ,nextX,candidateZ,radius,vehicles)) nextZ = candidateZ;
     else blocked = true;
   }
   return { x: nextX, z: nextZ, blocked };
