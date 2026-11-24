@@ -2,7 +2,7 @@
 // The area is deliberately small to keep iPhone rendering affordable.
 export type Point = { x: number; z: number };
 export type Road = { points: Point[]; width: number; name: string };
-export type Footprint = { x: number; z: number; halfX: number; halfZ: number; height: number };
+export type Footprint = { x: number; z: number; halfX: number; halfZ: number; height: number; outline?: Point[]; kind?: string };
 export type OSMMap = { roads: Road[]; buildings: Footprint[]; pickup: Point; delivery: Point; spawn: Point; extent: number };
 const CENTER_LAT = 16.0678;
 const CENTER_LON = 108.2208;
@@ -28,7 +28,7 @@ export function parseOSM(elements: Element[]): OSMMap {
       const minX=Math.min(...xs),maxX=Math.max(...xs),minZ=Math.min(...zs),maxZ=Math.max(...zs);
       if (maxX-minX > 2 && maxZ-minZ > 2) {
         const levels = Number(element.tags['building:levels']);
-        buildings.push({x:(minX+maxX)/2,z:(minZ+maxZ)/2,halfX:(maxX-minX)/2,halfZ:(maxZ-minZ)/2,height:Number.isFinite(levels)&&levels>0?Math.min(levels*3.3,70):12});
+        buildings.push({x:(minX+maxX)/2,z:(minZ+maxZ)/2,halfX:(maxX-minX)/2,halfZ:(maxZ-minZ)/2,outline:points,kind:element.tags.building,height:Number.isFinite(levels)&&levels>0?Math.min(levels*3.3,70):12});
       }
     }
   }
