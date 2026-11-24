@@ -2,13 +2,13 @@ import {useMemo,useRef,useLayoutEffect} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
 import type {Road,Point} from './osm';
-import {lanesFor,pose,advance,signalsFor,light,desiredSpeed,type Car} from './traffic';
+import {lanesFor,pose,advance,signalsFor,desiredSpeed,type Car} from './traffic';
+import {SignalPoles} from './SignalPoles';
 const COUNT=20;
 export function Traffic({roads,player}:{roads:Road[];player:React.RefObject<Point>}){
  const lanes=useMemo(()=>lanesFor(roads),[roads]);
  const signals=useMemo(()=>signalsFor(lanes),[lanes]);
- const signalList=useMemo(()=>[...signals.values()],[signals]);
- const lamps=useRef<THREE.InstancedMesh>(null),brakes=useRef<THREE.InstancedMesh>(null);
+ const brakes=useRef<THREE.InstancedMesh>(null);
  const colors=useMemo(()=>({red:new THREE.Color('#ff2929'),yellow:new THREE.Color('#ffcb22'),green:new THREE.Color('#24e85a'),dim:new THREE.Color('#651d20')}),[]);
  const cars=useRef<Car[]>([]),body=useRef<THREE.InstancedMesh>(null),top=useRef<THREE.InstancedMesh>(null),wheels=useRef<THREE.InstancedMesh>(null);
  const dummy=useMemo(()=>new THREE.Object3D(),[]);
@@ -35,9 +35,9 @@ export function Traffic({roads,player}:{roads:Road[];player:React.RefObject<Poin
  place(top.current,i,q.x,car?1.25:1.15,q.z,h,car?1.45:0.38,car?0.65:0.8,car?1.9:0.38);
  for(let j=0;j<4;j++){const side=j%2?1:-1,along=j<2?1:-1;const x=car?side*w*0.48:0,z=along*d*0.34;place(wheels.current,i*4+j,q.x+Math.cos(h)*x+Math.sin(h)*z,0.28,q.z-Math.sin(h)*x+Math.cos(h)*z,h,car?0.22:0.16,0.52,0.52)}
  }
- if(lamps.current){signalList.forEach((s,i)=>{for(let axis=0;axis<2;axis++){const k=i*2+axis;place(lamps.current!,k,s.point.x+(axis===0?0:3),3.5,s.point.z+(axis===0?3:0),0,0.4,0.65,0.4);lamps.current!.setColorAt(k,colors[light(s,axis,time)])}});lamps.current.instanceMatrix.needsUpdate=true;if(lamps.current.instanceColor)lamps.current.instanceColor.needsUpdate=true;}
+
  if(brakes.current){brakes.current.instanceMatrix.needsUpdate=true;if(brakes.current.instanceColor)brakes.current.instanceColor.needsUpdate=true;}
  for(const mesh of [body.current,top.current,wheels.current])mesh.instanceMatrix.needsUpdate=true;
  });
- return <group>{signalList.length>0&&<instancedMesh ref={lamps} args={[undefined,undefined,signalList.length*2]} frustumCulled={false}><boxGeometry/><meshBasicMaterial/></instancedMesh>}<instancedMesh ref={brakes} args={[undefined,undefined,COUNT]} frustumCulled={false}><boxGeometry/><meshBasicMaterial/></instancedMesh><instancedMesh ref={body} args={[undefined,undefined,COUNT]} frustumCulled={false}><boxGeometry/><meshStandardMaterial roughness={0.6}/></instancedMesh><instancedMesh ref={top} args={[undefined,undefined,COUNT]} frustumCulled={false}><boxGeometry/><meshStandardMaterial/></instancedMesh><instancedMesh ref={wheels} args={[undefined,undefined,COUNT*4]} frustumCulled={false}><boxGeometry/><meshStandardMaterial color="#22282d"/></instancedMesh></group>
+ return <group><SignalPoles lanes={lanes} signals={signals} player={player}/><instancedMesh ref={brakes} args={[undefined,undefined,COUNT]} frustumCulled={false}><boxGeometry/><meshBasicMaterial/></instancedMesh><instancedMesh ref={body} args={[undefined,undefined,COUNT]} frustumCulled={false}><boxGeometry/><meshStandardMaterial roughness={0.6}/></instancedMesh><instancedMesh ref={top} args={[undefined,undefined,COUNT]} frustumCulled={false}><boxGeometry/><meshStandardMaterial/></instancedMesh><instancedMesh ref={wheels} args={[undefined,undefined,COUNT*4]} frustumCulled={false}><boxGeometry/><meshStandardMaterial color="#22282d"/></instancedMesh></group>
 }
