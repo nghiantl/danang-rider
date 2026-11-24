@@ -3,6 +3,7 @@ import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
 import type {OSMMap,Point} from './osm';
 import {walkPaths,walkerPose,stepWalker,type Walker} from './pedestrians';
+import {buildWorld,obstaclesNear,cell} from './world';
 import {collidesWithBuildings} from './collision';
 const COUNT=24;
 export function Pedestrians({map,player}:{map:OSMMap;player:React.RefObject<Point>}){
@@ -11,7 +12,9 @@ export function Pedestrians({map,player}:{map:OSMMap;player:React.RefObject<Poin
  const torso=useRef<THREE.InstancedMesh>(null),head=useRef<THREE.InstancedMesh>(null),limbs=useRef<THREE.InstancedMesh>(null);
  const dummy=useMemo(()=>new THREE.Object3D(),[]);
  const nearby=useRef<number[]>([]),last=useRef(-10);
- const clear=(x:number,z:number)=>!collidesWithBuildings(x,z,0.35,map.buildings);
+ const world=useMemo(()=>buildWorld(map),[map]);
+ const cache=useMemo(()=>new Map<string,OSMMap['buildings']>(),[world]);
+ const clear=(x:number,z:number)=>{const k=cell(x)+':'+cell(z);let items=cache.get(k);if(!items){items=obstaclesNear(world,x,z);if(cache.size>=16)cache.clear();cache.set(k,items)}return !collidesWithBuildings(x,z,0.35,items)};
  useLayoutEffect(()=>{walkers.current=[];last.current=-10;
  for(let i=0;i<COUNT;i++){
  torso.current?.setColorAt(i,new THREE.Color(['#b34c45','#386b94','#e3bd68','#487e68','#e0d9cf','#775c91'][i%6]));

@@ -34,7 +34,7 @@ export function parseOSM(elements: Element[]): OSMMap {
     }
   }
   // Choose targets along the actual road network, not inside building footprints.
-  const extent = Math.max(200,...roads.flatMap(r=>r.points.map(p=>Math.max(Math.abs(p.x),Math.abs(p.z)))));
+  let extent=200;for(const r of roads)for(const p of r.points)extent=Math.max(extent,Math.abs(p.x),Math.abs(p.z));
   const mission=missionPoints(buildGraph(roads),p=>Math.abs(p.x)<extent-8&&Math.abs(p.z)<extent-8&&!buildings.some(b=>Math.abs(p.x-b.x)<b.halfX+2&&Math.abs(p.z-b.z)<b.halfZ+2));
   if(!mission)throw new Error('OSM roads insufficient for connected gameplay');
   const {spawn,pickup,delivery}=mission;
