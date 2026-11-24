@@ -1,3 +1,4 @@
+import {environmentHit,type EnvironmentCollider} from './environmentCollision.ts';
 import {blocksVehicleMove,type VehicleCollider} from './vehicleCollision.ts';
 // Sprint 1.1: lightweight 2D collision for static buildings.
 // Coordinates are in game-world metres; building footprints are 14 x 14.
@@ -41,7 +42,7 @@ export function collidesWithBuildings(x: number, z: number, radius: number = RID
 
 // Move in small increments to avoid tunnelling at high speed.
 // Resolve each axis independently to allow natural wall sliding.
-export function moveWithBuildingCollision(x: number, z: number, dx: number, dz: number, radius: number = RIDER_RADIUS, obstacles?: Obstacle[], worldLimit: number = WORLD_LIMIT, vehicles:VehicleCollider[] = []) {
+export function moveWithBuildingCollision(x: number, z: number, dx: number, dz: number, radius: number = RIDER_RADIUS, obstacles?: Obstacle[], worldLimit: number = WORLD_LIMIT, vehicles:VehicleCollider[] = [], objects:EnvironmentCollider[] = []) {
   let nextX = x;
   let nextZ = z;
   const steps = Math.max(1, Math.ceil(Math.hypot(dx, dz) / Math.max(radius * 0.25, 0.1)));
@@ -49,17 +50,18 @@ export function moveWithBuildingCollision(x: number, z: number, dx: number, dz: 
   const stepZ = dz / steps;
   let blocked = false;
   let vehicleHit:VehicleCollider|undefined;
+  let objectHit:EnvironmentCollider|undefined;
   for (let i = 0; i < steps; i++) {
     if(stepX!==0){
     const candidateX = Math.max(-worldLimit, Math.min(worldLimit, nextX + stepX));
     if(candidateX!==nextX+stepX)blocked=true;
-    if (!collidesWithBuildings(candidateX, nextZ, radius, obstacles)) {const hit=vehicles.find(v=>blocksVehicleMove(nextX,nextZ,candidateX,nextZ,radius,[v]));if(hit){vehicleHit=hit;blocked=true}else nextX=candidateX;}else blocked=true;
+    if (!collidesWithBuildings(candidateX, nextZ, radius, obstacles)) {const hit=vehicles.find(v=>blocksVehicleMove(nextX,nextZ,candidateX,nextZ,radius,[v]));const object=environmentHit(nextX,nextZ,candidateX,nextZ,radius,objects);if(hit){vehicleHit=hit;blocked=true}else if(object){objectHit=object;blocked=true}else nextX=candidateX;}else blocked=true;
     }
     if(stepZ!==0){
     const candidateZ = Math.max(-worldLimit, Math.min(worldLimit, nextZ + stepZ));
     if(candidateZ!==nextZ+stepZ)blocked=true;
-    if (!collidesWithBuildings(nextX, candidateZ, radius, obstacles)) {const hit=vehicles.find(v=>blocksVehicleMove(nextX,nextZ,nextX,candidateZ,radius,[v]));if(hit){vehicleHit=hit;blocked=true}else nextZ=candidateZ;}else blocked=true;
+    if (!collidesWithBuildings(nextX, candidateZ, radius, obstacles)) {const hit=vehicles.find(v=>blocksVehicleMove(nextX,nextZ,nextX,candidateZ,radius,[v]));const object=environmentHit(nextX,nextZ,nextX,candidateZ,radius,objects);if(hit){vehicleHit=hit;blocked=true}else if(object){objectHit=object;blocked=true}else nextZ=candidateZ;}else blocked=true;
     }
   }
-  return { x: nextX, z: nextZ, blocked, vehicleHit };
+  return { x: nextX, z: nextZ, blocked, vehicleHit, objectHit };
 }
