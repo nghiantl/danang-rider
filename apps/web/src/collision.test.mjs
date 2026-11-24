@@ -41,3 +41,22 @@ test('polygon interior and wall clearance remain solid',()=>{
  const r=moveWithBuildingCollision(20,0,-40,0,1.15,[diamond]);
  assert.ok(r.blocked);assert.ok(r.x>=11.15);
 });
+
+import {vehicleCollider,penetration} from './vehicleCollision.ts';
+test('fast rider cannot tunnel through AI car or scooter',()=>{
+ for(const kind of [0,1]){
+ const v=vehicleCollider(0,0,0,kind);
+ const result=moveWithBuildingCollision(0,-8,0,16,1.15,[],185,[v]);
+ assert.equal(result.blocked,true);assert.ok(result.z<0);assert.ok(penetration(result.x,result.z,1.15,v)<=0);
+ }
+});
+test('rotated vehicle uses oriented footprint',()=>{
+ const v=vehicleCollider(0,0,Math.PI/2,1);
+ assert.ok(penetration(2.5,0,1.15,v)>0);
+ assert.ok(penetration(0,2.5,1.15,v)<0);
+});
+test('rider can escape existing overlap',()=>{
+ const v=vehicleCollider(0,0,0,1);
+ const result=moveWithBuildingCollision(1,0,3,0,1.15,[],185,[v]);
+ assert.equal(result.x,4);
+});
