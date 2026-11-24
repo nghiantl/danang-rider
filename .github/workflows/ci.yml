@@ -46,6 +46,9 @@ jobs:
       - name: Test GPS routing
         run: node --experimental-strip-types --test apps/web/src/navigation.test.mjs
 
+      - name: Test AI traffic
+        run: node --experimental-strip-types --test apps/web/src/traffic.test.mjs
+
       - name: Typecheck and build Web 3D
         run: npm run build
 
