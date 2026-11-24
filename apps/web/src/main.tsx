@@ -101,7 +101,7 @@ function Rider({vehicle,gender,inputs,onTick,map,world,player,vehicles,people,hi
    if(map&&(!collisionCache.current||collisionCache.current.x!==cell(g.position.x)||collisionCache.current.z!==cell(g.position.z)))collisionCache.current={x:cell(g.position.x),z:cell(g.position.z),items:obstaclesNear(world,g.position.x,g.position.z)};
    let next:ReturnType<typeof moveWithBuildingCollision>=moveWithBuildingCollision(g.position.x,g.position.z,dx,dz,1.15,map?collisionCache.current?.items:undefined,map?map.extent+15:185,vehicles.current);
    if(next.vehicleHit&&Math.abs(velocity.current)>=1.5&&state.clock.elapsedTime-impactTime.current>0.65){const strength=Math.min(1,Math.abs(velocity.current)/14);impactTime.current=state.clock.elapsedTime;shake.current=strength;onCollision(strength,next.vehicleHit.halfLength>1);}
-   if(map){const water=riverGrid(map);if((water.blocked(next)&&!water.blocked(g.position))||(seaBlocked(map,next)&&!seaBlocked(map,g.position)))next={x:g.position.x,z:g.position.z,blocked:true};}
+   if(map){const water=riverGrid(map);if((water.blocked(next)&&!water.blocked(g.position))||(seaBlocked(map,next)&&!seaBlocked(map,g.position)))next={x:g.position.x,z:g.position.z,blocked:true,vehicleHit:undefined};}
    const impact=pedestrianImpact(g.position,next,Math.abs(velocity.current),people.current);if(impact){hits.current.push(impact);people.current=people.current.filter(p=>p.id!==impact.id);velocity.current*=0.35;}
    const travelled=Math.hypot(next.x-g.position.x,next.z-g.position.z);
    distance.current+=travelled;
