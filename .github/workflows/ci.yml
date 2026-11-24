@@ -43,6 +43,9 @@ jobs:
       - name: Test world chunks
         run: node --experimental-strip-types --test apps/web/src/world.test.mjs
 
+      - name: Test GPS routing
+        run: node --experimental-strip-types --test apps/web/src/navigation.test.mjs
+
       - name: Typecheck and build Web 3D
         run: npm run build
 
