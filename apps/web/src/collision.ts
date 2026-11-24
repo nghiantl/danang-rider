@@ -49,14 +49,18 @@ export function moveWithBuildingCollision(x: number, z: number, dx: number, dz: 
   const stepZ = dz / steps;
   let blocked = false;
   for (let i = 0; i < steps; i++) {
+    if(stepX!==0){
     const candidateX = Math.max(-worldLimit, Math.min(worldLimit, nextX + stepX));
     if(candidateX!==nextX+stepX)blocked=true;
     if (!collidesWithBuildings(candidateX, nextZ, radius, obstacles) && !blocksVehicleMove(nextX,nextZ,candidateX,nextZ,radius,vehicles)) nextX = candidateX;
     else blocked = true;
+    }
+    if(stepZ!==0){
     const candidateZ = Math.max(-worldLimit, Math.min(worldLimit, nextZ + stepZ));
     if(candidateZ!==nextZ+stepZ)blocked=true;
     if (!collidesWithBuildings(nextX, candidateZ, radius, obstacles) && !blocksVehicleMove(nextX,nextZ,nextX,candidateZ,radius,vehicles)) nextZ = candidateZ;
     else blocked = true;
+    }
   }
   return { x: nextX, z: nextZ, blocked };
 }
