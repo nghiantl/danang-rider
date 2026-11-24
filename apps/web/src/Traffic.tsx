@@ -17,10 +17,11 @@ export function Traffic({roads,player}:{roads:Road[];player:React.RefObject<Poin
  for(let i=0;i<COUNT;i++){
  let c=cars.current[i];let q=c?pose(lanes[c.lane],c.t):null;
  if(!c||!q||Math.hypot(q.x-p.x,q.z-p.z)>240||!advance(c,lanes,dt)){
- const choices=local.filter(({l})=>{const q=pose(l,l.length/2);return Math.hypot(q.x-p.x,q.z-p.z)>30&&cars.current.every(other=>{const o=pose(lanes[other.lane],other.t);return Math.hypot(q.x-o.x,q.z-o.z)>8})});
+ const choices=local.filter(({l})=>{const q=pose(l,l.length/2);return Math.hypot(q.x-p.x,q.z-p.z)>30&&cars.current.every(other=>{if(!other)return true;const o=pose(lanes[other.lane],other.t);return Math.hypot(q.x-o.x,q.z-o.z)>8})});
  if(choices.length){const {l,i:id}=choices[Math.floor(Math.random()*choices.length)];c={lane:id,t:l.length/2,speed:5+Math.random()*5,kind:i%3===0?1:0};cars.current[i]=c;q=pose(l,c.t)}else{q=null}
  }else q=pose(lanes[c.lane],c.t);
  if(!q){place(body.current,i,0,-100,0,0,0,0,0);place(top.current,i,0,-100,0,0,0,0,0);for(let j=0;j<4;j++)place(wheels.current,i*4+j,0,-100,0,0,0,0,0);continue}
+ if(!c)continue;
  const car=c.kind===1,w=car?1.65:0.48,d=car?3.6:1.65,h=q.heading;
  place(body.current,i,q.x,car?0.65:0.58,q.z,h,w,car?0.8:0.45,d);
  place(top.current,i,q.x,car?1.25:1.15,q.z,h,car?1.45:0.38,car?0.65:0.8,car?1.9:0.38);
