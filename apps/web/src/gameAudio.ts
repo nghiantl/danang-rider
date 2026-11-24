@@ -9,7 +9,19 @@ export class GameAudio{
  private motor:GainNode|null=null;
  private layers:GainNode[]=[];
  private muted=false;
+ private needsRecovery=false;
+ private lastRecovery=0;
+ recover(gesture=false){
+  if(this.muted||document.hidden)return;
+  if(gesture&&this.needsRecovery){this.dispose();this.needsRecovery=false;void this.unlock().catch(()=>{this.needsRecovery=true});return;}
+  if(this.ctx?.state==='running'&&!this.needsRecovery)return;
+  if(!gesture&&Date.now()-this.lastRecovery<700)return;
+  this.lastRecovery=Date.now();void this.unlock().catch(()=>{});
+ }
+ markInterrupted(){this.needsRecovery=true;}
+
  async unlock(){
+  if(this.ctx?.state==='closed')this.dispose();
   if(!this.ctx){
    const C=window.AudioContext||(window as unknown as {webkitAudioContext:typeof AudioContext}).webkitAudioContext;
    if(!C)return false;
@@ -21,11 +33,11 @@ export class GameAudio{
     const source=c.createBufferSource(),filter=c.createBiquadFilter(),gain=c.createGain();source.buffer=buffer;source.loop=true;filter.type=type;filter.frequency.value=freq;gain.gain.value=0;source.connect(filter);filter.connect(gain);gain.connect(master);source.start();this.layers.push(gain);
    }
   }
-  try{await this.ctx.resume();return this.ctx.state==='running'}catch{return false}
+  try{const c=this.ctx;await c.resume();return c===this.ctx&&c.state==='running'}catch{return false}
  }
  setMuted(value:boolean){this.muted=value;if(this.ctx&&this.master)this.master.gain.setTargetAtTime(value?0:0.55,this.ctx.currentTime,0.05)}
  update(speed:number,electric:boolean,rain:number,night:boolean,traffic:number){
-  const c=this.ctx;if(!c||!this.engine||!this.motor)return;
+  const c=this.ctx;if(!c||c.state!=='running'||!this.engine||!this.motor)return;
   const l=audioLevels(speed,electric,rain,night,traffic),t=c.currentTime;
   this.engine.type=electric?'sine':'triangle';this.engine.frequency.setTargetAtTime(l.frequency,t,0.12);this.motor.gain.setTargetAtTime(l.engine,t,0.12);
   [l.wind,l.rain,l.ambient,l.traffic].forEach((v,i)=>this.layers[i]?.gain.setTargetAtTime(v,t,0.2));
