@@ -48,6 +48,8 @@ jobs:
 
       - name: Test AI traffic
         run: node --experimental-strip-types --test apps/web/src/traffic.test.mjs
+      - name: Pedestrian tests
+        run: node --experimental-strip-types --test apps/web/src/pedestrians.test.mjs
 
       - name: Typecheck and build Web 3D
         run: npm run build
