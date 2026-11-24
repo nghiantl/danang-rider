@@ -16,3 +16,17 @@
 .topbar .gps-panel{pointer-events:auto;touch-action:manipulation;user-select:none;-webkit-user-select:none}
 .gps-map [role=button]{pointer-events:all;cursor:pointer;touch-action:manipulation}
 .gps-panel select{pointer-events:auto;touch-action:manipulation;min-height:28px}
+
+/* Sprint 4.3.1: separate scrollable setup from the fixed gameplay viewport. */
+html,body,#root{height:100%;min-height:0}
+.menu{min-height:100dvh;padding-top:max(22px,env(safe-area-inset-top));padding-bottom:max(22px,env(safe-area-inset-bottom))}
+.menu input{font-size:16px;max-width:100%}
+html.game-active,html.game-active body{overflow:hidden;overscroll-behavior:none}
+html.game-active body{position:fixed;inset:0;width:100%}
+.game{position:fixed;top:var(--game-top,0px);left:var(--game-left,0px);width:var(--game-width,100%);height:100vh;height:var(--game-height,100dvh);overflow:hidden}
+.game .topbar{top:calc(8px + env(safe-area-inset-top,0px));left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px))}
+.game .controls,.game .stats,.game .horn,.game .help{margin-bottom:env(safe-area-inset-bottom,0px)}
+.game .controls.left{left:max(20px,env(safe-area-inset-left,0px))}
+.game .controls.right,.game .horn{right:max(20px,env(safe-area-inset-right,0px))}
+.game .phone-backdrop{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);touch-action:pan-y}
+.game .phone{touch-action:pan-y;-webkit-overflow-scrolling:touch}
