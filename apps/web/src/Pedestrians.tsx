@@ -3,16 +3,15 @@ import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
 import type {OSMMap,Point} from './osm';
 import {walkPaths,walkerPose,stepWalker,type Walker} from './pedestrians';
-import {buildWorld,obstaclesNear,cell} from './world';
+import {type Chunk,obstaclesNear,cell} from './world';
 import {collidesWithBuildings} from './collision';
 const COUNT=24;
-export function Pedestrians({map,player}:{map:OSMMap;player:React.RefObject<Point>}){
+export function Pedestrians({map,player,world}:{world:Map<string,Chunk>;map:OSMMap;player:React.RefObject<Point>}){
  const paths=useMemo(()=>walkPaths(map.roads),[map]);
  const walkers=useRef<(Walker|null)[]>([]);
  const torso=useRef<THREE.InstancedMesh>(null),head=useRef<THREE.InstancedMesh>(null),limbs=useRef<THREE.InstancedMesh>(null);
  const dummy=useMemo(()=>new THREE.Object3D(),[]);
  const nearby=useRef<number[]>([]),last=useRef(-10);
- const world=useMemo(()=>buildWorld(map),[map]);
  const cache=useMemo(()=>new Map<string,OSMMap['buildings']>(),[world]);
  const clear=(x:number,z:number)=>{const k=cell(x)+':'+cell(z);let items=cache.get(k);if(!items){items=obstaclesNear(world,x,z);if(cache.size>=16)cache.clear();cache.set(k,items)}return !collidesWithBuildings(x,z,0.35,items)};
  useLayoutEffect(()=>{walkers.current=[];last.current=-10;
