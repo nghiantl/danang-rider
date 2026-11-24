@@ -19,7 +19,14 @@ export const CityDetail=React.memo(function CityDetail({chunks}:{chunks:Chunk[]}
  const a=-p.angle, ux=Math.cos(p.angle),uz=Math.sin(p.angle),nx=-uz,nz=ux;
  const add=(along:number,side:number,y:number,w:number,h:number,d:number,color:string)=>boxes.push({x:p.x+ux*along+nx*side,z:p.z+uz*along+nz*side,y,w,h,d,a,color});
  add(0,0,0.035,p.length,0.07,p.width,'#39454c');
- if(p.width>=8){for(const side of [-1,1]){add(0,side*(p.width/2+0.7),0.055,p.length,0.11,1.4,'#b7b4a9');add(0,side*(p.width/2-0.3),0.079,p.length,0.012,0.12,'#e6e2d5')}
+ if(p.width>=8){for(const side of [-1,1]){for(const [offset,y,h,d,color] of [[p.width/2+0.7,0.055,0.11,1.4,'#b7b4a9'],[p.width/2-0.3,0.079,0.012,0.12,'#e6e2d5']] as const){
+ const candidates=segments.filter(q=>q!==p&&Math.hypot(q.x-p.x,q.z-p.z)<(q.length+p.length)/2+q.width+p.width+4);
+ const n=Math.ceil(p.length),step=p.length/n;let start=-1;
+ for(let i=0;i<=n;i++){const t=-p.length/2+(i+0.5)*step,x=p.x+ux*t+nx*side*offset,z=p.z+uz*t+nz*side*offset;
+ const blocked=i===n||candidates.some(q=>{const dx=x-q.x,dz=z-q.z,c=Math.cos(q.angle),s=Math.sin(q.angle),pad=Math.hypot(step,d)/2;return Math.abs(dx*c+dz*s)<q.length/2+pad&&Math.abs(-dx*s+dz*c)<q.width/2+pad});
+ if(!blocked&&start<0)start=i;if(blocked&&start>=0){add(-p.length/2+(start+i)*step/2,side*offset,y,(i-start)*step,h,d,color);start=-1}
+ }
+ }}
  for(let t=-p.length/2+3;t<p.length/2-2;t+=8)add(t,0,0.085,Math.min(3,p.length/2-t),0.012,0.15,'#e8d69a');
  if(p.length>=18){const x=p.x+nx*(p.width/2+2),z=p.z+nz*(p.width/2+2);
  const clear=!buildings.some(({b})=>Math.abs(x-b.x)<b.halfX+2&&Math.abs(z-b.z)<b.halfZ+2)&&!segments.some(q=>{const dx=x-q.x,dz=z-q.z;return Math.abs(dx*Math.cos(q.angle)+dz*Math.sin(q.angle))<q.length/2+2&&Math.abs(-dx*Math.sin(q.angle)+dz*Math.cos(q.angle))<q.width/2+2});
