@@ -1,6 +1,6 @@
 import type {Road,Point} from './osm';
 export type Lane={a:Point;b:Point;length:number;ux:number;uz:number;offset:number;next:number[]};
-export type Car={lane:number;t:number;speed:number;kind:number};
+export type Car={lane:number;t:number;speed:number;kind:number;cruise?:number};
 const key=(p:Point)=>p.x.toFixed(3)+':'+p.z.toFixed(3);
 export function lanesFor(roads:Road[]){
  const lanes:Lane[]=[],starts=new Map<string,number[]>();
@@ -14,4 +14,26 @@ export function advance(c:Car,lanes:Lane[],dt:number,random=Math.random){
  c.t+=c.speed*dt;
  for(let i=0;i<32&&c.t>=lanes[c.lane].length;i++){const l=lanes[c.lane];if(!l.next.length){c.t=l.length;return false}c.t-=l.length;c.lane=l.next[Math.floor(random()*l.next.length)]}
  return true;
+}
+
+export type Signal={point:Point;axis:number;phase:number};
+export function signalsFor(lanes:Lane[]){
+ const nodes=new Map<string,{point:Point;neighbors:Set<string>}>();
+ for(const l of lanes){for(const [a,b] of [[l.a,l.b],[l.b,l.a]]){const k=key(a);let n=nodes.get(k);if(!n){n={point:a,neighbors:new Set()};nodes.set(k,n)}n.neighbors.add(key(b))}}
+ const signals=new Map<string,Signal>();
+ for(const [k,n] of nodes)if(n.neighbors.size>=3)signals.set(k,{point:n.point,axis:0,phase:Math.abs(Math.floor(n.point.x+n.point.z))%26});
+ return signals;
+}
+export function light(s:Signal,axis:number,time:number):'green'|'yellow'|'red'{
+ const t=((time+s.phase+axis*13)%26+26)%26;
+ return t<10?'green':t<12?'yellow':'red';
+}
+export function desiredSpeed(c:Car,lanes:Lane[],others:Car[],player:Point,signals:Map<string,Signal>,time:number){
+ const l=lanes[c.lane],q=pose(l,c.t);let gap=Infinity;
+ const signal=signals.get(key(l.b));
+ if(signal&&light(signal,Math.abs(l.ux)>Math.abs(l.uz)?0:1,time)!=='green')gap=Math.min(gap,Math.max(0,l.length-c.t-3));
+ const consider=(p:Point,clearance:number)=>{const dx=p.x-q.x,dz=p.z-q.z,along=dx*l.ux+dz*l.uz,side=Math.abs(-dx*l.uz+dz*l.ux);if(along>=0&&side<2)gap=Math.min(gap,Math.max(0,along-clearance))};
+ consider(player,3.5);
+ for(const other of others)if(other&&other!==c)consider(pose(lanes[other.lane],other.t),other.kind===1?5:3);
+ return Math.min(c.cruise??8,Math.sqrt(2*4*gap),gap/0.8);
 }
