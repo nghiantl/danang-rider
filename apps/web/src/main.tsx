@@ -5,10 +5,11 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 03.15 · BUILDING GEOMETRY';
-const RELEASE_VERSION = '3.15';
+const SPRINT_LABEL = 'SPRINT 03.16 · ENVIRONMENT COLLISION';
+const RELEASE_VERSION = '3.16';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
+import {treePosition,type EnvironmentCollider} from './environmentCollision';
 import { BUILDINGS, moveWithBuildingCollision } from './collision';
 import { loadDaNangMap, type OSMMap, type Point } from './osm';
 
@@ -82,11 +83,11 @@ function Marker({at,color,label}:{at:THREE.Vector3;color:string;label:string}) {
   <mesh position={[0,3.5,0]}><cylinderGeometry args={[0.12,0.12,7,8]}/><meshBasicMaterial color={color} transparent opacity={0.55}/></mesh>
  </group>
 }
-function Rider({vehicle,gender,inputs,onTick,map,world,player,vehicles,people,hits,onCollision}:{onCollision:(strength:number,car:boolean)=>void;people:React.RefObject<PedestrianCollider[]>;hits:React.RefObject<PedestrianHit[]>;player:React.RefObject<Point>;vehicles:React.RefObject<VehicleCollider[]>;vehicle:VehicleType;gender:Gender;inputs:React.MutableRefObject<Record<InputKey,boolean>>;onTick:(s:{speed:number;distance:number;x:number;z:number;heading:number;fps:number})=>void;map:OSMMap|null;world:Map<string,Chunk>}) {
+function Rider({vehicle,gender,inputs,onTick,map,world,player,vehicles,people,hits,onCollision,lampColliders,signalColliders}:{lampColliders:React.RefObject<EnvironmentCollider[]>;signalColliders:React.RefObject<EnvironmentCollider[]>;onCollision:(strength:number,car:boolean)=>void;people:React.RefObject<PedestrianCollider[]>;hits:React.RefObject<PedestrianHit[]>;player:React.RefObject<Point>;vehicles:React.RefObject<VehicleCollider[]>;vehicle:VehicleType;gender:Gender;inputs:React.MutableRefObject<Record<InputKey,boolean>>;onTick:(s:{speed:number;distance:number;x:number;z:number;heading:number;fps:number})=>void;map:OSMMap|null;world:Map<string,Chunk>}) {
  const impactTime=useRef(-10),shake=useRef(0);
  const group=useRef<THREE.Group>(null); const velocity=useRef(0);const heading=useRef(0);const distance=useRef(0);const lastUi=useRef(0);
  const frames=useRef(0), elapsed=useRef(0), fps=useRef(0);
- const collisionCache=useRef<{x:number;z:number;items:OSMMap['buildings']}|null>(null);
+ const collisionCache=useRef<{x:number;z:number;items:OSMMap['buildings'];trees:EnvironmentCollider[]}|null>(null);
  const {camera}=useThree(); const camTarget=useRef(new THREE.Vector3()); const cameraReady=useRef(false); const motion=useRef({speed:0,steer:0,distance:0,brake:false});
  useFrame((state,dtRaw)=>{
    frames.current++;elapsed.current+=dtRaw;if(elapsed.current>=1){fps.current=Math.round(frames.current/elapsed.current);frames.current=0;elapsed.current=0;}
@@ -98,10 +99,10 @@ function Rider({vehicle,gender,inputs,onTick,map,world,player,vehicles,people,hi
    heading.current+=steer*dt*1.35*Math.min(1,Math.abs(velocity.current)/4);
    const dx=-Math.sin(heading.current)*velocity.current*dt;
    const dz=-Math.cos(heading.current)*velocity.current*dt;
-   if(map&&(!collisionCache.current||collisionCache.current.x!==cell(g.position.x)||collisionCache.current.z!==cell(g.position.z)))collisionCache.current={x:cell(g.position.x),z:cell(g.position.z),items:obstaclesNear(world,g.position.x,g.position.z)};
-   let next:ReturnType<typeof moveWithBuildingCollision>=moveWithBuildingCollision(g.position.x,g.position.z,dx,dz,1.15,map?collisionCache.current?.items:undefined,map?map.extent+15:185,vehicles.current);
-   if(next.vehicleHit&&Math.abs(velocity.current)>=1.5&&state.clock.elapsedTime-impactTime.current>0.65){const strength=Math.min(1,Math.abs(velocity.current)/14);impactTime.current=state.clock.elapsedTime;shake.current=strength;onCollision(strength,next.vehicleHit.halfLength>1);}
-   if(map){const water=riverGrid(map);if((water.blocked(next)&&!water.blocked(g.position))||(seaBlocked(map,next)&&!seaBlocked(map,g.position)))next={x:g.position.x,z:g.position.z,blocked:true,vehicleHit:undefined};}
+   if(map&&(!collisionCache.current||collisionCache.current.x!==cell(g.position.x)||collisionCache.current.z!==cell(g.position.z)))collisionCache.current={x:cell(g.position.x),z:cell(g.position.z),items:obstaclesNear(world,g.position.x,g.position.z),trees:nearby(world,g.position.x,g.position.z).flatMap(chunk=>{const entry=[...world.entries()].find(([,v])=>v===chunk);if(!entry)return [];const [x,z]=entry[0].split(':').map(Number);const context=nearby(world,x*500,z*500);return chunk.segments.flatMap(p=>{const t=treePosition(p,context);return t?[t]:[]})})};
+   let next:ReturnType<typeof moveWithBuildingCollision>=moveWithBuildingCollision(g.position.x,g.position.z,dx,dz,1.15,map?collisionCache.current?.items:undefined,map?map.extent+15:185,vehicles.current,[...(collisionCache.current?.trees??[]),...lampColliders.current,...signalColliders.current].filter(o=>Math.hypot(o.x-g.position.x,o.z-g.position.z)<10));
+   if((next.vehicleHit||next.objectHit)&&Math.abs(velocity.current)>=1.5&&state.clock.elapsedTime-impactTime.current>0.65){const strength=Math.min(1,Math.abs(velocity.current)/14);impactTime.current=state.clock.elapsedTime;shake.current=strength;onCollision(strength,next.objectHit?true:(next.vehicleHit?.halfLength??0)>1);}
+   if(map){const water=riverGrid(map);if((water.blocked(next)&&!water.blocked(g.position))||(seaBlocked(map,next)&&!seaBlocked(map,g.position)))next={x:g.position.x,z:g.position.z,blocked:true,vehicleHit:undefined,objectHit:undefined};}
    const impact=pedestrianImpact(g.position,next,Math.abs(velocity.current),people.current);if(impact){hits.current.push(impact);people.current=people.current.filter(p=>p.id!==impact.id);velocity.current*=0.35;}
    const travelled=Math.hypot(next.x-g.position.x,next.z-g.position.z);
    distance.current+=travelled;
@@ -144,6 +145,7 @@ function Game({vehicle,gender,inputs,onTick,map,onStatus,audio,target,stage}:{ta
  const audioWeather=useRef({rain:0,night:false});
  const tick=(s:Telemetry)=>{audio.update(s.speed,vehicle==='electric',audioWeather.current.rain,audioWeather.current.night,vehicles.current.filter(v=>Math.hypot(v.x-s.x,v.z-s.z)<45).length/6);setPosition(p=>cell(p.x)===cell(s.x)&&cell(p.z)===cell(s.z)?p:{x:s.x,z:s.z});onTick(s)};
  const [contextLost,setContextLost]=useState(false);
+ const lampColliders=useRef<EnvironmentCollider[]>([]),signalColliders=useRef<EnvironmentCollider[]>([]);
  const flash=useRef<HTMLDivElement>(null);const animation=useRef<Animation|null>(null);
  const onCollision=React.useCallback((strength:number,car:boolean)=>{audio.collision(strength,car);if(typeof navigator.vibrate==='function')navigator.vibrate(Math.round(45+strength*100));if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches&&flash.current){animation.current?.cancel();animation.current=flash.current.animate([{opacity:strength*0.32},{opacity:0}],{duration:220,easing:'ease-out'});}},[audio]);
  useEffect(()=>()=>animation.current?.cancel(),[]);
@@ -151,8 +153,8 @@ function Game({vehicle,gender,inputs,onTick,map,onStatus,audio,target,stage}:{ta
  return <WebGLBoundary><Canvas fallback={<WebGLNotice message="Trình duyệt không hỗ trợ WebGL."/>} shadows={false} dpr={[0.85,1]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:false,powerPreference:'default',preserveDrawingBuffer:false}}>
   <ContextMonitor onLost={onLost} onRestored={onRestored}/>
   <color attach="background" args={['#a7d4e9']}/><fog attach="fog" args={['#a7d4e9',180,600]}/>
-  <Environment map={map} player={player} onStatus={onStatus} audioWeather={audioWeather}/>
-  <AdaptiveResolution/><City map={map} world={world} position={position} target={target} stage={stage}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles} crossingPeople={crossingPeople}/>}{map&&<Pedestrians map={map} player={player} world={world} crossingPeople={crossingPeople} people={people} hits={hits}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles} people={people} hits={hits} onCollision={onCollision}/>
+  <Environment map={map} player={player} onStatus={onStatus} audioWeather={audioWeather} lampColliders={lampColliders}/>
+  <AdaptiveResolution/><City map={map} world={world} position={position} target={target} stage={stage}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles} crossingPeople={crossingPeople} signalColliders={signalColliders}/>}{map&&<Pedestrians map={map} player={player} world={world} crossingPeople={crossingPeople} people={people} hits={hits}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles} people={people} hits={hits} onCollision={onCollision} lampColliders={lampColliders} signalColliders={signalColliders}/>
  </Canvas><div ref={flash} aria-hidden="true" style={{position:'absolute',inset:0,pointerEvents:'none',background:'#ff6347',opacity:0,zIndex:20}}/>{contextLost&&<WebGLNotice message="WebGL context bị mất. Game đang chờ trình duyệt phục hồi; nếu không tự phục hồi, hãy tải lại."/>}</WebGLBoundary>
 }
 type Telemetry={speed:number;distance:number;x:number;z:number;heading:number;fps:number};
