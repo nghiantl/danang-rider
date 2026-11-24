@@ -26,3 +26,10 @@ test('OSM road and building geometry can be parsed and collided with', () => {
 test('empty OSM response fails explicitly instead of spawning an unusable world',()=>{
   assert.throws(()=>parseOSM([]),/insufficient/);
 });
+
+import {clearRoadBuildings} from './buildingGeometry.ts';
+const road={points:[{x:-100,z:0},{x:100,z:0}],width:8,name:'Road'};
+const house=(x,z,halfX,halfZ)=>({x,z,halfX,halfZ,height:12,outline:[{x:x-halfX,z:z-halfZ},{x:x+halfX,z:z-halfZ},{x:x+halfX,z:z+halfZ},{x:x-halfX,z:z+halfZ}]});
+test('road clearance preserves safe houses and shrinks overlapping footprint consistently',()=>{const safe=house(0,20,4,4),overlap=house(0,9,4,5);const result=clearRoadBuildings([safe,overlap],[road]);assert.equal(result[0],safe);assert.equal(result.length,2);assert.ok(result[1].halfZ<5);assert.ok(result[1].outline.every(p=>p.z>6.2));assert.equal(moveWithBuildingCollision(-10,0,20,0,1.15,result).blocked,false);assert.equal(result[1].height,12)});
+test('unrecoverable building in road is omitted, including corridor containment',()=>{assert.deepEqual(clearRoadBuildings([house(0,0,10,10),house(0,0,200,200)],[road]),[])});
+test('diagonal road and cell boundary are handled',()=>{const r={...road,points:[{x:40,z:40},{x:90,z:90}]};assert.deepEqual(clearRoadBuildings([house(64,64,4,4)],[r]),[])});
