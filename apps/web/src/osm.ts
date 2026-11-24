@@ -15,14 +15,30 @@ export function project(lat: number, lon: number): Point {
 }
 type Element = { type: string; tags?: Record<string,string>; geometry?: { lat:number; lon:number }[] };
 const WIDTH: Record<string,number> = { primary: 14, secondary: 12, tertiary: 10, residential: 8, service: 6, living_street: 6, unclassified: 8, pedestrian: 5 };
-export function parseOSM(elements: Element[]): OSMMap {
+// Clip full OSM ways to the downloaded coverage; preserve shared interior vertices.
+export function clipRoad(points:Point[],bounds:number[]):Point[][]{
+ const lo=project(bounds[3],bounds[0]),hi=project(bounds[1],bounds[2]),runs:Point[][]=[];
+ for(let i=1;i<points.length;i++){
+  const a=points[i-1],b=points[i],dx=b.x-a.x,dz=b.z-a.z;let t0=0,t1=1;
+  for(const [p,q] of [[-dx,a.x-lo.x],[dx,hi.x-a.x],[-dz,a.z-lo.z],[dz,hi.z-a.z]]){
+   if(p===0){if(q<0){t0=2;break}}else if(p<0)t0=Math.max(t0,q/p);else t1=Math.min(t1,q/p);
+  }
+  if(t0>=t1)continue;
+  const start=t0===0?a:{x:a.x+dx*t0,z:a.z+dz*t0},end=t1===1?b:{x:a.x+dx*t1,z:a.z+dz*t1};
+  const run=runs[runs.length-1],last=run?.[run.length-1];
+  if(last&&Math.hypot(last.x-start.x,last.z-start.z)<1e-6)run.push(end);else runs.push([start,end]);
+ }
+ return runs;
+}
+export function parseOSM(elements: Element[], bounds?:number[]): OSMMap {
   const roads: Road[] = [];
   const buildings: Footprint[] = [];
   for (const element of elements) {
     if (element.type !== 'way' || !element.geometry || element.geometry.length < 2) continue;
     const points = element.geometry.map(p => project(p.lat,p.lon));
     if (element.tags?.highway && WIDTH[element.tags.highway]) {
-      roads.push({ points, width: WIDTH[element.tags.highway], name: element.tags.name || 'Đường chưa có tên', kind:element.tags.highway, oneway:element.tags.oneway==='-1'?-1:element.tags.oneway==='no'?0:['yes','1','true'].includes(element.tags.oneway)||element.tags.junction==='roundabout'?1:0 });
+      const runs:Point[][]=bounds?clipRoad(points,bounds):[points];
+      for(const points of runs)roads.push({ points, width: WIDTH[element.tags.highway], name: element.tags.name || 'Đường chưa có tên', kind:element.tags.highway, oneway:element.tags.oneway==='-1'?-1:element.tags.oneway==='no'?0:['yes','1','true'].includes(element.tags.oneway)||element.tags.junction==='roundabout'?1:0 });
     }
     if (element.tags?.building && points.length >= 3) {
       const xs=points.map(p=>p.x), zs=points.map(p=>p.z);
@@ -53,7 +69,7 @@ export async function loadBundledDaNangMap(signal?: AbortSignal): Promise<OSMMap
   const response=await fetch(import.meta.env.BASE_URL+'data/danang-osm.json',{signal,cache:'default'});
   if(!response.ok)throw new Error('OSM snapshot HTTP '+response.status);
   const data: {elements?:Element[]}=await response.json();
-  return parseOSM(data.elements||[]);
+  return parseOSM(data.elements||[],[108.2152,16.0516,108.2376,16.0732]);
 }
 export async function loadDaNangMap(signal?: AbortSignal): Promise<OSMMap> {
   try { return await loadBundledDaNangMap(signal); } catch(error) {
