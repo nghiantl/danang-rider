@@ -4,4 +4,4 @@ export function levelFor(xp:number){let l=1;while(l<MAX_LEVEL&&xp>=threshold(l+1
 export function deliveryXP(meters:number){return 25+Math.min(75,Math.floor(Math.max(0,meters)/100)*5)}
 export function rank(level:number){return level<=5?'Shipper tập sự':level<=10?'Shipper chính thức':level<=20?'Shipper chuyên nghiệp':level<=30?'Shipper kỳ cựu':level<=40?'Shipper tinh anh':'Huyền thoại Đà Nẵng'}
 export function reward(level:number){return level*5000}
-export function advanceXP(xp:number,meters:number){const next=Math.min(threshold(MAX_LEVEL),xp+deliveryXP(meters));const levels=Array.from({length:Math.max(0,levelFor(next)-levelFor(xp))},(_,i)=>levelFor(xp)+i+1);return {xp:next,level:levelFor(next),gained:next-xp,levels}}
+export function advanceXP(xp:number,meters:number,bonus=0){const next=Math.min(threshold(MAX_LEVEL),xp+deliveryXP(meters)+bonus);const levels=Array.from({length:Math.max(0,levelFor(next)-levelFor(xp))},(_,i)=>levelFor(xp)+i+1);return {xp:next,level:levelFor(next),gained:next-xp,levels}}

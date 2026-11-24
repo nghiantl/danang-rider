@@ -1,0 +1,4 @@
+import test from 'node:test';import assert from 'node:assert/strict';import {startRun,damage,evaluate,vipEligible} from './deliveryRating.ts';import {newCareer,settle} from './save.ts';
+const o={id:'x',shop:'test',pickup:{x:0,z:0},delivery:{x:1,z:1},fare:20000,meters:1000,minutes:5};
+test('timer and damage',()=>{const r=startRun(o,0);assert.equal(r.deadline,300000);assert.equal(evaluate(o,r,300000).stars,5);assert.equal(evaluate(o,r,300001).stars,3);assert.equal(damage(r,1,true).condition,75);assert.equal(evaluate(o,damage(r,1,true),0).stars,4)});
+test('settlement once and VIP',()=>{const c={...newCareer(null),run:startRun(o)};const n=settle(c,o);assert.equal(n.ratings[0].stars,5);assert.equal(n.income.wallet,122000);assert.equal(n.xp,95);assert.equal(settle(n,o),n);assert.equal(vipEligible(Array(5).fill(n.ratings[0])),true)});
