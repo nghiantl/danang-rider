@@ -6,7 +6,7 @@ import type {Road,Point} from './osm';
 import {lanesFor,pose,advance,signalsFor,desiredSpeed,insideJunction,type Car} from './traffic';
 import {SignalPoles} from './SignalPoles';
 const COUNT=20;
-export function Traffic({roads,player,vehicles}:{roads:Road[];player:React.RefObject<Point>;vehicles:React.RefObject<VehicleCollider[]>}){
+export function Traffic({roads,player,vehicles,crossingPeople}:{crossingPeople:React.RefObject<Point[]>;roads:Road[];player:React.RefObject<Point>;vehicles:React.RefObject<VehicleCollider[]>}){
  const lanes=useMemo(()=>lanesFor(roads),[roads]);
  const indexed=useMemo(()=>lanes.map((l,i)=>({l,i})),[lanes]);
  const signals=useMemo(()=>signalsFor(lanes),[lanes]);
@@ -24,7 +24,7 @@ export function Traffic({roads,player,vehicles}:{roads:Road[];player:React.RefOb
  const local=localCache.current;
  const place=(mesh:THREE.InstancedMesh,i:number,x:number,y:number,z:number,h:number,w:number,height:number,d:number)=>{dummy.position.set(x,y,z);dummy.rotation.set(0,h,0);dummy.scale.set(w,height,d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix)};
  const published:VehicleCollider[]=[];
- const targets=cars.current.map(c=>c?desiredSpeed(c,lanes,cars.current,p,signals,time):0);
+ const targets=cars.current.map(c=>c?desiredSpeed(c,lanes,cars.current,p,signals,time,crossingPeople.current):0);
  for(let i=0;i<COUNT;i++){
  let c=cars.current[i];let q=c?pose(lanes[c.lane],c.t):null;
  const before=c?{...c}:null;
