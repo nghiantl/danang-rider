@@ -1,3 +1,4 @@
+import type {VehicleCollider} from './vehicleCollision';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
@@ -71,7 +72,7 @@ function Marker({at,color,label}:{at:THREE.Vector3;color:string;label:string}) {
   <mesh position={[0,3.5,0]}><cylinderGeometry args={[0.12,0.12,7,8]}/><meshBasicMaterial color={color} transparent opacity={0.55}/></mesh>
  </group>
 }
-function Rider({vehicle,gender,inputs,onTick,map,world}:{vehicle:VehicleType;gender:Gender;inputs:React.MutableRefObject<Record<InputKey,boolean>>;onTick:(s:{speed:number;distance:number;x:number;z:number;heading:number;fps:number})=>void;map:OSMMap|null;world:Map<string,Chunk>}) {
+function Rider({vehicle,gender,inputs,onTick,map,world,player,vehicles}:{player:React.RefObject<Point>;vehicles:React.RefObject<VehicleCollider[]>;vehicle:VehicleType;gender:Gender;inputs:React.MutableRefObject<Record<InputKey,boolean>>;onTick:(s:{speed:number;distance:number;x:number;z:number;heading:number;fps:number})=>void;map:OSMMap|null;world:Map<string,Chunk>}) {
  const group=useRef<THREE.Group>(null); const velocity=useRef(0);const heading=useRef(0);const distance=useRef(0);const lastUi=useRef(0);
  const frames=useRef(0), elapsed=useRef(0), fps=useRef(0);
  const collisionCache=useRef<{x:number;z:number;items:OSMMap['buildings']}|null>(null);
@@ -87,12 +88,13 @@ function Rider({vehicle,gender,inputs,onTick,map,world}:{vehicle:VehicleType;gen
    const dx=-Math.sin(heading.current)*velocity.current*dt;
    const dz=-Math.cos(heading.current)*velocity.current*dt;
    if(map&&(!collisionCache.current||collisionCache.current.x!==cell(g.position.x)||collisionCache.current.z!==cell(g.position.z)))collisionCache.current={x:cell(g.position.x),z:cell(g.position.z),items:obstaclesNear(world,g.position.x,g.position.z)};
-   const next=moveWithBuildingCollision(g.position.x,g.position.z,dx,dz,1.15,map?collisionCache.current?.items:undefined,map?map.extent+15:185);
+   const next=moveWithBuildingCollision(g.position.x,g.position.z,dx,dz,1.15,map?collisionCache.current?.items:undefined,map?map.extent+15:185,vehicles.current);
    const travelled=Math.hypot(next.x-g.position.x,next.z-g.position.z);
    distance.current+=travelled;
    motion.current.distance+=travelled*Math.sign(velocity.current);
    g.position.x=next.x;
    g.position.z=next.z;
+   player.current={x:next.x,z:next.z};
    if(next.blocked && Math.hypot(dx,dz)>0.01 && travelled<Math.hypot(dx,dz)*0.1) velocity.current=0;
    g.rotation.y=heading.current;
    motion.current.speed=velocity.current;motion.current.steer=steer;motion.current.brake=Boolean(brake);
@@ -110,12 +112,13 @@ function Rider({vehicle,gender,inputs,onTick,map,world}:{vehicle:VehicleType;gen
 function Game({vehicle,gender,inputs,onTick,map}:{vehicle:VehicleType;gender:Gender;inputs:React.MutableRefObject<Record<InputKey,boolean>>;onTick:(s:Telemetry)=>void;map:OSMMap|null}){
  const world=useMemo(()=>map?buildWorld(map):new Map<string,Chunk>(),[map]);
  const [position,setPosition]=useState<Point>(map?.spawn||{x:0,z:-20});
+ const vehicles=useRef<VehicleCollider[]>([]);
  const player=useRef<Point>(map?.spawn||{x:0,z:-20});
- const tick=(s:Telemetry)=>{player.current=s;setPosition(p=>cell(p.x)===cell(s.x)&&cell(p.z)===cell(s.z)?p:{x:s.x,z:s.z});onTick(s)};
+ const tick=(s:Telemetry)=>{setPosition(p=>cell(p.x)===cell(s.x)&&cell(p.z)===cell(s.z)?p:{x:s.x,z:s.z});onTick(s)};
  return <Canvas shadows={false} dpr={[1,1.5]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:true}}>
   <color attach="background" args={['#a7d4e9']}/><fog attach="fog" args={['#a7d4e9',180,600]}/>
   <hemisphereLight args={['#dceeff','#a49b83',2.1]}/><directionalLight position={[80,140,50]} intensity={2.2}/>
-  <City map={map} world={world} position={position}/>{map&&<Traffic roads={map.roads} player={player}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world}/>
+  <City map={map} world={world} position={position}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles}/>}<Rider vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles}/>
  </Canvas>;
 }
 type Telemetry={speed:number;distance:number;x:number;z:number;heading:number;fps:number};
