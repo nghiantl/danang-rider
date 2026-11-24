@@ -35,8 +35,11 @@ export function signalApproaches(lanes:Lane[],signals:Map<string,Signal>){
  return lanes.flatMap(l=>{
  const s=signals.get(key(l.b));const k=key(l.a)+'>'+key(l.b);
  if(!s||seen.has(k))return [];seen.add(k);
- const setback=Math.max(5,l.width/2+1),side=l.width/2+0.8;
- return [{signal:s,axis:Math.abs(l.ux)>Math.abs(l.uz)?0:1,x:l.b.x-l.ux*setback-l.uz*side,z:l.b.z-l.uz*setback+l.ux*side,heading:Math.atan2(-l.ux,-l.uz)}];
+ for(let setback=Math.max(5,l.width/2+1);setback<=Math.min(l.length-0.5,30);setback+=2){
+ const side=l.width/2+0.8,x=l.b.x-l.ux*setback-l.uz*side,z=l.b.z-l.uz*setback+l.ux*side;
+ if(lanes.some(q=>{const dx=x-q.a.x,dz=z-q.a.z,t=dx*q.ux+dz*q.uz;return t>=-0.4&&t<=q.length+0.4&&Math.abs(-dx*q.uz+dz*q.ux)<q.width/2+0.4}))continue;
+ return [{signal:s,axis:Math.abs(l.ux)>Math.abs(l.uz)?0:1,x,z,heading:Math.atan2(-l.ux,-l.uz)}];
+ }return [];
  });
 }
 export function junctionRadius(l:Lane,lanes:Lane[]){return Math.max(5,l.width/2+1,...l.next.map(i=>lanes[i].width/2+1))}
