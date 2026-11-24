@@ -1,12 +1,12 @@
 import type {Road,Point} from './osm';
-import {lanesFor,signalsFor,type Signal} from './traffic.ts';
+import {lanesFor,signalsFor,signalApproaches,crossingSetback,type Signal} from './traffic.ts';
 export type WalkPath={a:Point;b:Point;length:number;ux:number;uz:number;crossing?:Signal;axis?:number};
 export type Walker={path:number;t:number;direction:number;speed:number;phase:number};
 export function walkPaths(roads:Road[]):WalkPath[]{
  const paths:WalkPath[]=[];
- const lanes=lanesFor(roads),signals=signalsFor(lanes),seen=new Set<string>();
- for(const l of lanes){const k=l.b.x.toFixed(3)+':'+l.b.z.toFixed(3),signal=signals.get(k),id=k+'>'+l.a.x.toFixed(3)+':'+l.a.z.toFixed(3);if(!signal||seen.has(id)||l.width<8)continue;seen.add(id);const setback=Math.max(5,l.width/2+1)+3;if(l.length<setback+2)continue;const x=l.b.x-l.ux*setback,z=l.b.z-l.uz*setback,offset=l.width/2+0.7;paths.push({a:{x:x+l.uz*offset,z:z-l.ux*offset},b:{x:x-l.uz*offset,z:z+l.ux*offset},length:2*offset,ux:-l.uz,uz:l.ux,crossing:signal,axis:Math.abs(l.ux)>Math.abs(l.uz)?0:1});}
-
+ const lanes=lanesFor(roads),signals=signalsFor(lanes);
+ for(const approach of signalApproaches(lanes,signals)){const l=approach.lane,signal=approach.signal,setback=crossingSetback(l,lanes);const x=l.b.x-l.ux*setback,z=l.b.z-l.uz*setback,offset=l.width/2+0.7;paths.push({a:{x:x+l.uz*offset,z:z-l.ux*offset},b:{x:x-l.uz*offset,z:z+l.ux*offset},length:2*offset,ux:-l.uz,uz:l.ux,crossing:signal,axis:approach.axis});}
+ 
  for(const r of roads){if(r.width<8||r.kind==='pedestrian')continue;
  for(let i=1;i<r.points.length;i++){
  const a=r.points[i-1],b=r.points[i],length=Math.hypot(b.x-a.x,b.z-a.z);

@@ -2,14 +2,14 @@ import {useMemo,useRef,useLayoutEffect} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
 import type {OSMMap,Point} from './osm';
-import {signalState} from './traffic';
+import {signalState,CROSSWALK_DEPTH} from './traffic';
 import {walkPaths,walkerPose,stepWalker,type Walker} from './pedestrians';
 import {type Chunk,obstaclesNear,cell} from './world';
 import {collidesWithBuildings} from './collision';
 const COUNT=24;
 export function Pedestrians({map,player,world,crossingPeople}:{crossingPeople:React.RefObject<Point[]>;world:Map<string,Chunk>;map:OSMMap;player:React.RefObject<Point>}){
  const paths=useMemo(()=>walkPaths(map.roads),[map]);
- const stripes=useMemo(()=>paths.filter(p=>p.crossing).flatMap(p=>Array.from({length:Math.floor((p.length-1.4)/0.8)},(_,i)=>({x:p.a.x+p.ux*(1.1+i*0.8),z:p.a.z+p.uz*(1.1+i*0.8),angle:Math.atan2(p.ux,p.uz)}))),[paths]);
+ const stripes=useMemo(()=>paths.filter(p=>p.crossing).flatMap(p=>{const width=p.length-1.4,n=Math.max(2,Math.ceil(width/0.8)),pitch=width/n,bar=pitch*0.55;return Array.from({length:n},(_,i)=>{const t=0.7+bar/2+i*(width-bar)/(n-1);return {x:p.a.x+p.ux*t,z:p.a.z+p.uz*t,angle:Math.atan2(p.ux,p.uz),bar}})}),[paths]);
  const walkers=useRef<(Walker|null)[]>([]);
  const torso=useRef<THREE.InstancedMesh>(null),head=useRef<THREE.InstancedMesh>(null),limbs=useRef<THREE.InstancedMesh>(null);
  const dummy=useMemo(()=>new THREE.Object3D(),[]);
@@ -63,4 +63,4 @@ export function Pedestrians({map,player,world,crossingPeople}:{crossingPeople:Re
  return <group>{stripes.length>0&&<CrosswalkMarks stripes={stripes}/>}<instancedMesh ref={torso} args={[undefined,undefined,COUNT]} frustumCulled={false}><boxGeometry/><meshStandardMaterial/></instancedMesh><instancedMesh ref={head} args={[undefined,undefined,COUNT]} frustumCulled={false}><sphereGeometry args={[0.5,8,6]}/><meshStandardMaterial/></instancedMesh><instancedMesh ref={limbs} args={[undefined,undefined,COUNT*4]} frustumCulled={false}><boxGeometry/><meshStandardMaterial color="#34424d"/></instancedMesh></group>
 }
 
-function CrosswalkMarks({stripes}:{stripes:{x:number;z:number;angle:number}[]}){const ref=useRef<THREE.InstancedMesh>(null);useLayoutEffect(()=>{const d=new THREE.Object3D();stripes.forEach((s,i)=>{d.position.set(s.x,0.095,s.z);d.rotation.set(0,s.angle,0);d.updateMatrix();ref.current?.setMatrixAt(i,d.matrix)});if(ref.current){ref.current.instanceMatrix.needsUpdate=true;ref.current.computeBoundingSphere()}},[stripes]);return <instancedMesh ref={ref} args={[undefined,undefined,stripes.length]}><boxGeometry args={[2.5,0.012,0.42]}/><meshStandardMaterial color="#eeeae0"/></instancedMesh>}
+function CrosswalkMarks({stripes}:{stripes:{x:number;z:number;angle:number;bar:number}[]}){const ref=useRef<THREE.InstancedMesh>(null);useLayoutEffect(()=>{const d=new THREE.Object3D();stripes.forEach((s,i)=>{d.position.set(s.x,0.095,s.z);d.rotation.set(0,s.angle,0);d.scale.set(1,1,s.bar);d.updateMatrix();ref.current?.setMatrixAt(i,d.matrix)});if(ref.current){ref.current.instanceMatrix.needsUpdate=true;ref.current.computeBoundingSphere()}},[stripes]);return <instancedMesh ref={ref} args={[undefined,undefined,stripes.length]}><boxGeometry args={[CROSSWALK_DEPTH,0.012,1]}/><meshStandardMaterial color="#eeeae0"/></instancedMesh>}

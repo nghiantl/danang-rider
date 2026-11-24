@@ -38,12 +38,14 @@ export function signalApproaches(lanes:Lane[],signals:Map<string,Signal>){
  for(let setback=Math.max(5,l.width/2+1);setback<=Math.min(l.length-0.5,30);setback+=2){
  const side=l.width/2+0.8,x=l.b.x-l.ux*setback-l.uz*side,z=l.b.z-l.uz*setback+l.ux*side;
  if(lanes.some(q=>{const dx=x-q.a.x,dz=z-q.a.z,t=dx*q.ux+dz*q.uz;return t>=-0.4&&t<=q.length+0.4&&Math.abs(-dx*q.uz+dz*q.ux)<q.width/2+0.4}))continue;
- return [{signal:s,axis:Math.abs(l.ux)>Math.abs(l.uz)?0:1,x,z,heading:Math.atan2(-l.ux,-l.uz)}];
+ return [{lane:l,setback,signal:s,axis:Math.abs(l.ux)>Math.abs(l.uz)?0:1,x,z,heading:Math.atan2(-l.ux,-l.uz)}];
  }return [];
  });
 }
 export function junctionRadius(l:Lane,lanes:Lane[]){return Math.max(5,l.width/2+1,...l.next.map(i=>lanes[i].width/2+1))}
-export function stopPosition(c:Car,l:Lane,lanes:Lane[]){return Math.max(0,l.length-junctionRadius(l,lanes)-(c.kind===1?1.8:0.825)-0.5)}
+export const CROSSWALK_DEPTH=2.5;
+export function crossingSetback(l:Lane,lanes:Lane[]){return Math.min(l.length-0.5,junctionRadius(l,lanes)+CROSSWALK_DEPTH/2+0.5)}
+export function stopPosition(c:Car,l:Lane,lanes:Lane[]){return Math.max(0,l.length-crossingSetback(l,lanes)-CROSSWALK_DEPTH/2-(c.kind===1?1.8:0.825)-0.5)}
 export function insideJunction(l:Lane,t:number,lanes:Lane[],signals:Map<string,Signal>){return (signals.has(key(l.b))&&l.length-t<junctionRadius(l,lanes)+2)||(signals.has(key(l.a))&&t<Math.max(5,l.width/2+1)+2)}
 export function desiredSpeed(c:Car,lanes:Lane[],others:Car[],player:Point,signals:Map<string,Signal>,time:number,crossingPeople:Point[]=[]){
  const l=lanes[c.lane],q=pose(l,c.t);let gap=Infinity;
