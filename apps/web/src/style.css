@@ -55,3 +55,23 @@ html.game-active body{position:fixed;inset:0;width:100%}
 .fleet-dialog button{min-height:44px;touch-action:manipulation}
 .fleet-dialog button:disabled{opacity:.5;cursor:default}
 @media(max-width:760px){.topbar .hud-actions{max-width:200px}.topbar .hud-actions .wallet-button{flex-basis:auto;margin-left:auto}.topbar .hud-actions .phone-toggle{padding:5px}}
+
+/* Mobile HUD 5.2.1 */
+.mobile-fps,.mobile-level{display:none}
+@media(max-width:760px),(pointer:coarse) and (max-height:500px){
+.game{--pad:max(5px,env(safe-area-inset-left,0px));--pedal:clamp(54px,16vw,88px);--bottom:calc(12px + env(safe-area-inset-bottom,0px));touch-action:auto}
+.game .topbar{display:contents}.game .hud-left,.game .hud-right,.game .hud-actions{display:contents}
+.game .weather-toggle,.game #weather-hud,.game .mission-toggle,.game .desktop-stat,.game .desktop-camera-label{display:none!important}
+.game .gps-panel{position:absolute;left:var(--pad);right:auto;top:calc(5px + env(safe-area-inset-top,0px));width:clamp(92px,28vw,140px);z-index:3;background:#12233066;pointer-events:auto}
+.game .gps-instruction{padding:3px;display:block}.game .gps-instruction>b,.game .gps-instruction>span,.game .gps-instruction>small,.game .gps-caption{display:none}.game .gps-panel select{min-height:32px;max-width:100%}
+.game .wallet-button{position:absolute;right:max(5px,env(safe-area-inset-right,0px));top:calc(5px + env(safe-area-inset-top,0px));z-index:3;background:#12233055;padding:6px;font-size:12px;min-height:40px}
+.game .hud-actions .phone-toggle,.game .camera-toggle,.game .horn{position:absolute;right:max(5px,env(safe-area-inset-right,0px));left:auto;width:46px;height:46px;min-height:46px;padding:0;display:grid;place-items:center;border:1px solid #ffffff55;border-radius:50%;background:#12233044;z-index:3;pointer-events:auto;touch-action:manipulation}
+.game .hud-actions .phone-toggle:nth-child(1){top:calc(50px + env(safe-area-inset-top,0px))}.game .hud-actions .phone-toggle:nth-child(2){top:calc(100px + env(safe-area-inset-top,0px))}.game .hud-actions .phone-toggle:nth-child(3){top:calc(150px + env(safe-area-inset-top,0px))}
+.game .hud-actions .rider-phone-toggle{left:var(--pad);right:auto;top:50%;transform:translateY(-50%)}
+.game .horn{bottom:calc(var(--bottom) + var(--pedal) + 9px);margin:0}.game .camera-toggle{top:auto;bottom:calc(var(--bottom) + var(--pedal) + 59px)}
+.game .controls{bottom:var(--bottom);margin:0;gap:3px}.game .controls.left{left:var(--pad)}.game .controls.right{right:max(5px,env(safe-area-inset-right,0px))}.game .touch{width:var(--pedal);height:var(--pedal);background:#172c3b44;border-color:#ffffff70;font-size:23px;display:grid;place-items:center;padding:0}.game .touch:active{background:#4ce4c388}
+.game .stats{bottom:calc(var(--bottom) + 4px);margin:0;width:calc(100% - 4 * var(--pedal) - 28px);padding:4px 0;display:grid;justify-items:center;gap:2px;background:#12233044;border:0;backdrop-filter:none}.game .stats strong{font-size:clamp(13px,4vw,22px)}.game .stats strong small,.game .stats span{font-size:10px}
+.game .mobile-fps{display:block;position:absolute;top:calc(6px + env(safe-area-inset-top,0px));left:50%;transform:translateX(-50%);z-index:2;font-size:11px;text-shadow:0 1px 3px #000;pointer-events:none}
+.game .topbar .mission{position:absolute;left:50%;transform:translateX(-50%);bottom:calc(var(--bottom) + var(--pedal) + 8px);top:auto;max-width:55%;z-index:3;background:#12233088;padding:5px;pointer-events:auto}.game .mission>b,.game .mission>span{display:none}.game .mission>small{font-size:10px}.game .mission[hidden]{display:none!important}
+.game .camera-look-zone{bottom:calc(var(--bottom) + var(--pedal) + 6px)}.game .phone-backdrop .phone{width:min(360px,90%);max-height:85%;touch-action:pan-y}.game .phone button{min-height:44px}
+}
