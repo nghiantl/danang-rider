@@ -1,4 +1,5 @@
 import type {OSMMap,Point} from '../osm';
+import {tankCapacity,upgrades} from './vehicleShop.ts';
 import type {Career} from './save';
 export type Station={id:string;kind:'petrol'|'electric';point:Point;access:Point};
 export const capacity=(v:Station['kind'])=>v==='petrol'?4:100;
@@ -16,5 +17,5 @@ export function stations(map:OSMMap|null):Station[]{
  if(out.length>=12)break;
  }return out;
 }
-export function quote(v:Station['kind'],remaining:number,wallet:number,budget:number){const cost=Math.max(0,Math.min(Math.floor(wallet),Math.floor(budget),Math.ceil(Math.max(0,capacity(v)-remaining)*price(v))));return {cost,remaining:Math.min(capacity(v),remaining+cost/price(v))}}
-export function purchase(c:Career,budget:number,id:string):Career{if(c.ledger.some(t=>t.id===id))return c;const q=quote(c.vehicle,c.remaining,c.income.wallet,budget);if(!q.cost)return c;return {...c,remaining:q.remaining,income:{...c.income,wallet:c.income.wallet-q.cost},ledger:[...c.ledger,{id,amount:q.cost,at:new Date().toISOString(),direction:'expense'}]}}
+export function quote(v:Station['kind'],remaining:number,wallet:number,budget:number,max=capacity(v)){const cost=Math.max(0,Math.min(Math.floor(wallet),Math.floor(budget),Math.ceil(Math.max(0,max-remaining)*price(v))));return {cost,remaining:Math.min(max,remaining+cost/price(v))}}
+export function purchase(c:Career,budget:number,id:string):Career{if(c.ledger.some(t=>t.id===id))return c;const q=quote(c.vehicle,c.remaining,c.income.wallet,budget,tankCapacity(c.vehicle,upgrades(c)));if(!q.cost)return c;return {...c,remaining:q.remaining,income:{...c.income,wallet:c.income.wallet-q.cost},ledger:[...c.ledger,{id,amount:q.cost,at:new Date().toISOString(),direction:'expense'}]}}
