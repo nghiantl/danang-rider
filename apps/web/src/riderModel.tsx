@@ -19,7 +19,7 @@ function Wheel({spin}:{spin:React.RefObject<THREE.Group|null>}){
  <mesh rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.18,0.18,0.09,16]}/><meshStandardMaterial color="#aab3bb" metalness={0.65} roughness={0.35}/></mesh>
  {[0,1,2,3,4].map(i=><group key={i} rotation={[i*Math.PI/5,0,0]}><Body at={[0.055,0,0]} size={[0.025,0.43,0.035]} color="#454d55" metal={0.5}/></group>)}<mesh rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.095,0.095,0.13,12]}/><meshStandardMaterial color="#626c74" metalness={0.6}/></mesh></group>;
 }
-export const RiderModel=memo(function RiderModel({vehicle,gender,motion,action,dismounted=false,firstPerson=false}:{firstPerson?:boolean;dismounted?:boolean;action:React.RefObject<DeliveryAction|null>;vehicle:'petrol'|'electric';gender:'male'|'female';motion:React.RefObject<Motion>}){
+export const RiderModel=memo(function RiderModel({vehicle,gender,motion,action,dismounted=false,firstPerson=false,customPaint,boxPaint}:{customPaint?:string;boxPaint?:string;firstPerson?:boolean;dismounted?:boolean;action:React.RefObject<DeliveryAction|null>;vehicle:'petrol'|'electric';gender:'male'|'female';motion:React.RefObject<Motion>}){
  const lean=useRef<THREE.Group>(null),front=useRef<THREE.Group>(null),fw=useRef<THREE.Group>(null),rw=useRef<THREE.Group>(null),lamp=useRef<THREE.MeshStandardMaterial>(null),headlight=useRef<THREE.SpotLight>(null),aim=useRef<THREE.Object3D>(null),brakeGlow=useRef<THREE.Mesh>(null);
  const last=useRef(0);const seated=useRef<THREE.Group>(null);
  useFrame((_,dt)=>{const m=motion.current;if(!m)return;if(seated.current)seated.current.visible=!action.current&&!dismounted;const step=m.distance-last.current;last.current=m.distance;
@@ -30,7 +30,7 @@ export const RiderModel=memo(function RiderModel({vehicle,gender,motion,action,d
  if(brakeGlow.current)brakeGlow.current.visible=m.brake;
  if(headlight.current&&aim.current){headlight.current.target=aim.current;headlight.current.intensity=85;}
  });
- const electric=vehicle==='electric',paint=electric?'#36b6a7':'#d94b39',shirt=gender==='female'?'#e58ca5':'#3676b7',skin='#d9a77f',pants='#26364a';
+ const electric=vehicle==='electric',paint=customPaint??(electric?'#36b6a7':'#d94b39'),shirt=gender==='female'?'#e58ca5':'#3676b7',skin='#d9a77f',pants='#26364a';
  return <group>
  <mesh position={[0,0.115,-6.3]} rotation={[-Math.PI/2,0,0]} renderOrder={2}>
  <planeGeometry args={[5.4,11]}/><shaderMaterial transparent depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} uniforms={{tint:{value:new THREE.Color('#fff0bd')},strength:{value:0.48}}} vertexShader={glowVertex} fragmentShader={glowFragment}/>
@@ -72,8 +72,8 @@ export const RiderModel=memo(function RiderModel({vehicle,gender,motion,action,d
  </>}
  </group>
  <Body at={[0,0.99,0.85]} size={[0.54,0.055,0.48]} color="#303a43" metal={0.4}/>
- <Body at={[0,1.23,0.85]} size={[0.49,0.43,0.42]} color="#e7b84b"/>
- <Body at={[0,1.46,0.85]} size={[0.52,0.055,0.45]} color="#f4ce68"/>
+ <Body at={[0,1.23,0.85]} size={[0.49,0.43,0.42]} color={boxPaint??"#e7b84b"}/>
+ <Body at={[0,1.46,0.85]} size={[0.52,0.055,0.45]} color={boxPaint??"#f4ce68"}/>
  <Body at={[0,1.36,1.066]} size={[0.48,0.035,0.012]} color="#65502c"/>
  <Body at={[0,1.20,1.066]} size={[0.34,0.08,0.015]} color="#fff0b8"/>
  {[-1,1].map(side=><group key={'box'+side}><Body at={[side*0.17,1.23,1.07]} size={[0.035,0.39,0.018]} color="#55504a"/><Body at={[side*0.249,1.18,0.85]} size={[0.012,0.065,0.30]} color="#fff0b8"/></group>)}
