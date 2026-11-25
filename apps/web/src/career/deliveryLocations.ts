@@ -1,5 +1,5 @@
-import type {OSMMap,Point} from './osm';
-import {buildGraph,nearest,reachable,dist} from './navigation.ts';
+import type {OSMMap,Point} from '../osm';
+import {buildGraph,nearest,reachable,dist} from '../navigation.ts';
 export type DeliveryLocation={point:Point;street:string};
 const cache=new WeakMap<OSMMap,{graph:ReturnType<typeof buildGraph>;pickups:DeliveryLocation[];deliveries:DeliveryLocation[]}>();
 export function deliveryLocations(map:OSMMap){
