@@ -35,3 +35,5 @@ html.game-active body{position:fixed;inset:0;width:100%}
 .topbar .hud-collapse{pointer-events:auto;touch-action:manipulation;min-height:44px;max-width:100%;padding:6px 10px;border:1px solid #ffffff35;border-radius:10px;background:#122330df;color:#fff;font-size:12px;font-weight:700;text-align:left;overflow-wrap:anywhere;-webkit-tap-highlight-color:transparent}
 .topbar .brand[hidden],.topbar .mission[hidden]{display:none!important}
 @media(max-width:760px),(max-height:430px){.topbar .hud-collapse{font-size:11px;padding:5px 8px}.topbar .hud-left{gap:4px}}
+
+.topbar .wallet-button{pointer-events:auto;touch-action:manipulation;color:#fff;min-height:44px}.phone-backdrop .transaction-history{width:min(340px,90%);overscroll-behavior:contain;touch-action:pan-y}.transaction-row{display:grid;gap:4px;padding:9px 0;border-bottom:1px solid #ffffff26;overflow-wrap:anywhere}.transaction-row small{color:#b7d3da}
