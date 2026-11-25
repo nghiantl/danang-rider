@@ -5,7 +5,8 @@ import {isOrderKind,ORDER_TYPES} from './orderCatalog.ts';
 import {evaluate,startRun,type DeliveryRun,type DeliveryResult} from './deliveryRating.ts';
 import {validFleet,tankCapacity,type Fleet} from './vehicleShop.ts';
 export const KEY='danang-rider-career-v1';
-export type Career={version:1;fleet?:Fleet;health?:number;run?:DeliveryRun|null;ratings?:DeliveryResult[];name:string;created:string;xp:number;level:number;income:Income;vehicle:'petrol'|'electric';gender:'male'|'female';remaining:number;position:Point|null;stage:'pickup'|'dropoff'|'done';order:Order|null;batch:number;paid:string[];ledger:{id:string;amount:number;at:string;direction?:'expense'}[];mapMode:'osm'|'fallback'|null};
+export type QueuedDelivery={order:Order;stage:'pickup'|'dropoff';run:DeliveryRun};
+export type Career={queue?:QueuedDelivery[];version:1;fleet?:Fleet;health?:number;run?:DeliveryRun|null;ratings?:DeliveryResult[];name:string;created:string;xp:number;level:number;income:Income;vehicle:'petrol'|'electric';gender:'male'|'female';remaining:number;position:Point|null;stage:'pickup'|'dropoff'|'done';order:Order|null;batch:number;paid:string[];ledger:{id:string;amount:number;at:string;direction?:'expense'}[];mapMode:'osm'|'fallback'|null};
 const int=(n:unknown)=>typeof n==='number'&&Number.isSafeInteger(n)&&n>=0;
 const point=(p:any)=>p&&Number.isFinite(p.x)&&Number.isFinite(p.z)&&Math.abs(p.x)<=20000&&Math.abs(p.z)<=20000;
 export function parseCareer(raw:string):Career{
@@ -21,6 +22,7 @@ export function parseCareer(raw:string):Career{
  if(v.ratings!==undefined&&(!Array.isArray(v.ratings)||!v.ratings.every((r:any)=>r&&typeof r.id==='string'&&int(r.stars)&&r.stars>=1&&r.stars<=5&&typeof r.late==='boolean'&&int(r.condition)&&r.condition<=100&&int(r.tip)&&int(r.bonusXP))))throw Error('Đánh giá không hợp lệ');
  if(v.run!=null&&(!o||v.run.id!==o.id||!int(v.run.deadline)||!int(v.run.condition)||v.run.condition>100))throw Error('Tiến trình giao hàng không hợp lệ');
  if(v.stage!=='done'&&!v.run)v.run=startRun(o);
+ if(v.queue!==undefined){if(!Array.isArray(v.queue)||v.queue.length>1||v.stage==='done'&&v.queue.length)throw Error('Hàng chờ không hợp lệ');let used=v.stage==='done'?0:o.size??2;const ids=new Set([o?.id]);for(const q of v.queue){if(!q||!['pickup','dropoff'].includes(q.stage)||!q.order||!q.run||ids.has(q.order.id)||v.paid.includes(q.order.id))throw Error('Đơn chờ không hợp lệ');parseCareer(JSON.stringify({...v,queue:undefined,order:q.order,stage:q.stage,run:q.run}));ids.add(q.order.id);used+=q.order.size??2}if(used>2)throw Error('Quá sức chứa')}
  v.xp=Math.min(v.xp,threshold(MAX_LEVEL));v.level=levelFor(v.xp);
  return v;
 }
