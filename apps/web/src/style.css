@@ -37,3 +37,5 @@ html.game-active body{position:fixed;inset:0;width:100%}
 @media(max-width:760px),(max-height:430px){.topbar .hud-collapse{font-size:11px;padding:5px 8px}.topbar .hud-left{gap:4px}}
 
 .topbar .wallet-button{pointer-events:auto;touch-action:manipulation;color:#fff;min-height:44px}.phone-backdrop .transaction-history{width:min(340px,90%);overscroll-behavior:contain;touch-action:pan-y}.transaction-row{display:grid;gap:4px;padding:9px 0;border-bottom:1px solid #ffffff26;overflow-wrap:anywhere}.transaction-row small{color:#b7d3da}
+
+.camera-look-zone{position:absolute;inset:0;z-index:1;touch-action:none;cursor:grab}.camera-look-zone:active{cursor:grabbing}
