@@ -5,8 +5,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 04.6.4 · TOUCH CONTROLS';
-const RELEASE_VERSION = '4.6.4';
+const SPRINT_LABEL = 'SPRINT 04.6.5 · COCKPIT VIEW';
+const RELEASE_VERSION = '4.6.5';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
 import {treePosition,type EnvironmentCollider} from './environmentCollision';
@@ -131,17 +131,19 @@ function Rider({firstPerson,orbit,health,servicePose,energyLocked,spawn,action,t
    if(moving){orbit.current.yaw=THREE.MathUtils.damp(orbit.current.yaw,0,9,dt);orbit.current.pitch=THREE.MathUtils.damp(orbit.current.pitch,0,9,dt);}
    const h=heading.current,angle=h+orbit.current.yaw,pitch=orbit.current.pitch;
    const chase=5.5+Math.min(Math.abs(velocity.current)/21,1)*1.5;
-   const eye=new THREE.Vector3(g.position.x-Math.sin(h)*.25,1.84,g.position.z-Math.cos(h)*.25);
+   const eye=new THREE.Vector3(g.position.x+Math.sin(h)*.12,1.78,g.position.z+Math.cos(h)*.12);
+   const viewPitch=pitch-(firstPerson?.34:0);
+   if(camera instanceof THREE.PerspectiveCamera){const fov=firstPerson?Math.min(105,Math.max(76,THREE.MathUtils.radToDeg(2*Math.atan(Math.tan(THREE.MathUtils.degToRad(58)/2)/Math.max(.4,camera.aspect))))):65;if(Math.abs(camera.fov-fov)>.01){camera.fov=fov;camera.updateProjectionMatrix();}}
    const behind=firstPerson?eye:new THREE.Vector3(g.position.x+Math.sin(angle)*chase*Math.cos(pitch),3.8+Math.sin(pitch)*chase,g.position.z+Math.cos(angle)*chase*Math.cos(pitch));
    if(!cameraReady.current||firstPerson){camTarget.current.copy(behind);cameraReady.current=true;}
    camTarget.current.lerp(behind,1-Math.exp(-dt*6));camera.position.copy(camTarget.current);
    if(shake.current>0.001){if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches){const a=shake.current*(firstPerson?.035:.14);camera.position.x+=Math.sin(state.clock.elapsedTime*65)*a;camera.position.y+=Math.cos(state.clock.elapsedTime*83)*a;}shake.current*=Math.exp(-dt*12);}
-   if(firstPerson)camera.lookAt(eye.x-Math.sin(angle)*10*Math.cos(pitch),eye.y+Math.sin(pitch)*10,eye.z-Math.cos(angle)*10*Math.cos(pitch));
+   if(firstPerson)camera.lookAt(eye.x-Math.sin(angle)*10*Math.cos(viewPitch),eye.y+Math.sin(viewPitch)*10,eye.z-Math.cos(angle)*10*Math.cos(viewPitch));
    else camera.lookAt(g.position.x-Math.sin(angle)*2,1.35,g.position.z-Math.cos(angle)*2);
    if(state.clock.elapsedTime-lastUi.current>0.12){lastUi.current=state.clock.elapsedTime;onTick({speed:Math.abs(velocity.current)*3.6,distance:distance.current,x:g.position.x,z:g.position.z,heading:heading.current,fps:fps.current});}
  });
  return <group ref={group} position={[spawn.x,0,spawn.z]}>
-   <RiderModel dismounted={servicePose?.station.kind==='electric'} vehicle={vehicle} gender={gender} motion={motion} action={action}/><DeliveryScene action={action} gender={gender} target={target}/>
+   <RiderModel firstPerson={firstPerson} dismounted={servicePose?.station.kind==='electric'} vehicle={vehicle} gender={gender} motion={motion} action={action}/><DeliveryScene action={action} gender={gender} target={target}/>
  </group>;
 }
 // Sample sustained frame times rather than reacting to individual slow frames.
