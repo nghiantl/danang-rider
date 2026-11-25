@@ -30,3 +30,8 @@ html.game-active body{position:fixed;inset:0;width:100%}
 .game .controls.right,.game .horn{right:max(20px,env(safe-area-inset-right,0px))}
 .game .phone-backdrop{padding:env(safe-area-inset-top,0px) env(safe-area-inset-right,0px) env(safe-area-inset-bottom,0px) env(safe-area-inset-left,0px);touch-action:pan-y}
 .game .phone{touch-action:pan-y;-webkit-overflow-scrolling:touch}
+
+/* Sprint 4.6.1: independent collapsible HUD panels. */
+.topbar .hud-collapse{pointer-events:auto;touch-action:manipulation;min-height:44px;max-width:100%;padding:6px 10px;border:1px solid #ffffff35;border-radius:10px;background:#122330df;color:#fff;font-size:12px;font-weight:700;text-align:left;overflow-wrap:anywhere;-webkit-tap-highlight-color:transparent}
+.topbar .brand[hidden],.topbar .mission[hidden]{display:none!important}
+@media(max-width:760px),(max-height:430px){.topbar .hud-collapse{font-size:11px;padding:5px 8px}.topbar .hud-left{gap:4px}}
