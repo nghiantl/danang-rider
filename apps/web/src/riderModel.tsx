@@ -1,4 +1,4 @@
-import type {DeliveryAction} from './DeliveryScene';
+import {CargoModel,type CargoKind,type DeliveryAction} from './DeliveryScene';
 import {memo,useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
@@ -19,10 +19,10 @@ function Wheel({spin}:{spin:React.RefObject<THREE.Group|null>}){
  <mesh rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.18,0.18,0.09,16]}/><meshStandardMaterial color="#aab3bb" metalness={0.65} roughness={0.35}/></mesh>
  {[0,1,2,3,4].map(i=><group key={i} rotation={[i*Math.PI/5,0,0]}><Body at={[0.055,0,0]} size={[0.025,0.43,0.035]} color="#454d55" metal={0.5}/></group>)}<mesh rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.095,0.095,0.13,12]}/><meshStandardMaterial color="#626c74" metalness={0.6}/></mesh></group>;
 }
-export const RiderModel=memo(function RiderModel({vehicle,gender,motion,action,dismounted=false,firstPerson=false,customPaint,boxPaint}:{customPaint?:string;boxPaint?:string;firstPerson?:boolean;dismounted?:boolean;action:React.RefObject<DeliveryAction|null>;vehicle:'petrol'|'electric';gender:'male'|'female';motion:React.RefObject<Motion>}){
+export const RiderModel=memo(function RiderModel({cargo=[],vehicle,gender,motion,action,dismounted=false,firstPerson=false,customPaint,boxPaint}:{cargo?:CargoKind[];customPaint?:string;boxPaint?:string;firstPerson?:boolean;dismounted?:boolean;action:React.RefObject<DeliveryAction|null>;vehicle:'petrol'|'electric';gender:'male'|'female';motion:React.RefObject<Motion>}){
  const lean=useRef<THREE.Group>(null),front=useRef<THREE.Group>(null),fw=useRef<THREE.Group>(null),rw=useRef<THREE.Group>(null),lamp=useRef<THREE.MeshStandardMaterial>(null),headlight=useRef<THREE.SpotLight>(null),aim=useRef<THREE.Object3D>(null),brakeGlow=useRef<THREE.Mesh>(null);
- const last=useRef(0);const seated=useRef<THREE.Group>(null);
- useFrame((_,dt)=>{const m=motion.current;if(!m)return;if(seated.current)seated.current.visible=!action.current&&!dismounted;const step=m.distance-last.current;last.current=m.distance;
+ const lid=useRef<THREE.Group>(null);const last=useRef(0);const seated=useRef<THREE.Group>(null);
+ useFrame((_,dt)=>{const m=motion.current;if(!m)return;const a=action.current,t=a?.elapsed??0;const open=!!a&&(a.kind==='pickup'?t>4.2&&t<5.5:t<1.25);if(lid.current)lid.current.rotation.x=THREE.MathUtils.damp(lid.current.rotation.x,open?-1.65:0,12,dt);if(seated.current)seated.current.visible=!action.current&&!dismounted;const step=m.distance-last.current;last.current=m.distance;
  if(lean.current)lean.current.rotation.z=THREE.MathUtils.damp(lean.current.rotation.z,m.steer*Math.min(Math.abs(m.speed)/8,1)*0.23,8,dt);
  if(front.current)front.current.rotation.y=THREE.MathUtils.damp(front.current.rotation.y,m.steer*0.24,10,dt);
  for(const w of [fw.current,rw.current])if(w)w.rotation.x-=step/0.325;
@@ -72,8 +72,7 @@ export const RiderModel=memo(function RiderModel({vehicle,gender,motion,action,d
  </>}
  </group>
  <Body at={[0,0.99,0.85]} size={[0.54,0.055,0.48]} color="#303a43" metal={0.4}/>
- <Body at={[0,1.23,0.85]} size={[0.49,0.43,0.42]} color={boxPaint??"#e7b84b"}/>
- <Body at={[0,1.46,0.85]} size={[0.52,0.055,0.45]} color={boxPaint??"#f4ce68"}/>
+ <Body at={[0,1.04,.85]} size={[.49,.055,.42]} color={boxPaint??"#e7b84b"}/>{[-1,1].map(side=><group key={side}><Body at={[side*.23,1.24,.85]} size={[.035,.38,.42]} color={boxPaint??"#e7b84b"}/><Body at={[0,1.24,.85+side*.195]} size={[.49,.38,.035]} color={boxPaint??"#e7b84b"}/></group>)}{cargo.map((kind,i)=><group key={i} position={[cargo.length===1?0:(i-.5)*.22,1.19,.85]} scale={[.65,.65,.65]}><CargoModel kind={kind}/></group>)}<group ref={lid} position={[0,1.46,.63]}><Body at={[0,0,.22]} size={[.52,.055,.45]} color={boxPaint??"#f4ce68"}/></group>
  <Body at={[0,1.36,1.066]} size={[0.48,0.035,0.012]} color="#65502c"/>
  <Body at={[0,1.20,1.066]} size={[0.34,0.08,0.015]} color="#fff0b8"/>
  {[-1,1].map(side=><group key={'box'+side}><Body at={[side*0.17,1.23,1.07]} size={[0.035,0.39,0.018]} color="#55504a"/><Body at={[side*0.249,1.18,0.85]} size={[0.012,0.065,0.30]} color="#fff0b8"/></group>)}
