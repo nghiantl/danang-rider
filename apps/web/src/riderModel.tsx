@@ -19,7 +19,7 @@ function Wheel({spin}:{spin:React.RefObject<THREE.Group|null>}){
  <mesh rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.18,0.18,0.09,16]}/><meshStandardMaterial color="#aab3bb" metalness={0.65} roughness={0.35}/></mesh>
  {[0,1,2,3,4].map(i=><group key={i} rotation={[i*Math.PI/5,0,0]}><Body at={[0.055,0,0]} size={[0.025,0.43,0.035]} color="#454d55" metal={0.5}/></group>)}<mesh rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.095,0.095,0.13,12]}/><meshStandardMaterial color="#626c74" metalness={0.6}/></mesh></group>;
 }
-export const RiderModel=memo(function RiderModel({vehicle,gender,motion,action,dismounted=false}:{dismounted?:boolean;action:React.RefObject<DeliveryAction|null>;vehicle:'petrol'|'electric';gender:'male'|'female';motion:React.RefObject<Motion>}){
+export const RiderModel=memo(function RiderModel({vehicle,gender,motion,action,dismounted=false,firstPerson=false}:{firstPerson?:boolean;dismounted?:boolean;action:React.RefObject<DeliveryAction|null>;vehicle:'petrol'|'electric';gender:'male'|'female';motion:React.RefObject<Motion>}){
  const lean=useRef<THREE.Group>(null),front=useRef<THREE.Group>(null),fw=useRef<THREE.Group>(null),rw=useRef<THREE.Group>(null),lamp=useRef<THREE.MeshStandardMaterial>(null),headlight=useRef<THREE.SpotLight>(null),aim=useRef<THREE.Object3D>(null),brakeGlow=useRef<THREE.Mesh>(null);
  const last=useRef(0);const seated=useRef<THREE.Group>(null);
  useFrame((_,dt)=>{const m=motion.current;if(!m)return;if(seated.current)seated.current.visible=!action.current&&!dismounted;const step=m.distance-last.current;last.current=m.distance;
@@ -63,11 +63,13 @@ export const RiderModel=memo(function RiderModel({vehicle,gender,motion,action,d
  <group ref={seated}>{[-1,1].map(side=><group key={side}><Limb a={[side*0.14,1.03,0.24]} b={[side*0.22,0.78,-0.12]} r={0.105} color={pants}/><Limb a={[side*0.22,0.78,-0.12]} b={[side*0.18,0.51,-0.12]} r={0.085} color={pants}/><Body at={[side*0.18,0.51,-0.2]} size={[0.17,0.12,0.29]} color="#20272d" round/>
  <Limb a={[side*0.19,1.48,0.12]} b={[side*0.28,1.28,-0.17]} r={0.075} color={shirt}/><Limb a={[side*0.28,1.28,-0.17]} b={[side*0.32,1.16,-0.48]} r={0.055} color={skin}/><Body at={[side*0.32,1.16,-0.48]} size={[0.12,0.12,0.12]} color={skin} round/></group>)}
  <Body at={[0,1.31,0.18]} size={[gender==='female'?0.39:0.46,0.57,0.32]} color={shirt} round/>
+ {!firstPerson&&<>
  <Body at={[0,1.65,0.08]} size={[0.14,0.19,0.14]} color={skin} round/>
  <Body at={[0,1.79,0.06]} size={[0.29,0.34,0.29]} color={skin} round/>
  <Body at={[0,1.88,0.08]} size={[0.35,0.29,0.36]} color="#263746" round/>
  <Body at={[0,1.86,-0.085]} size={[0.29,0.12,0.09]} color="#7797a8" round/>
  {gender==='female'&&<Body at={[0,1.65,0.24]} size={[0.13,0.31,0.13]} color="#332720" round/>}
+ </>}
  </group>
  <Body at={[0,0.99,0.85]} size={[0.54,0.055,0.48]} color="#303a43" metal={0.4}/>
  <Body at={[0,1.23,0.85]} size={[0.49,0.43,0.42]} color="#e7b84b"/>
