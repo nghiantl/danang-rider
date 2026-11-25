@@ -47,3 +47,11 @@ html.game-active body{position:fixed;inset:0;width:100%}
 .game .touch{pointer-events:auto;touch-action:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .game .phone-backdrop{z-index:5}
 @media(max-height:430px){.game .camera-look-zone{bottom:calc(115px + env(safe-area-inset-bottom,0px))}}
+
+/* Sprint 4.8.1: compact independent fleet dialogs */
+.topbar .hud-actions{flex-wrap:wrap;justify-content:flex-end;max-width:100%}
+.topbar .hud-actions .phone-toggle{min-width:44px;min-height:44px;touch-action:manipulation}
+.phone-backdrop .fleet-dialog{width:min(380px,92%);touch-action:pan-y;overscroll-behavior:contain;-webkit-overflow-scrolling:touch}
+.fleet-dialog button{min-height:44px;touch-action:manipulation}
+.fleet-dialog button:disabled{opacity:.5;cursor:default}
+@media(max-width:760px){.topbar .hud-actions{max-width:200px}.topbar .hud-actions .wallet-button{flex-basis:auto;margin-left:auto}.topbar .hud-actions .phone-toggle{padding:5px}}
