@@ -15,6 +15,7 @@ export function parseCareer(raw:string):Career{
  v.health=v.health??100;
  if(v.fleet!==undefined&&!validFleet(v.fleet,v.vehicle))throw Error('Garage không hợp lệ');
  const o=v.order;if(o!==null&&(!o||typeof o.id!=='string'||typeof o.shop!=='string'||!point(o.pickup)||!point(o.delivery)||!int(o.fare)||!Number.isFinite(o.meters)||o.meters<0))throw Error('Đơn hàng không hợp lệ');
+ if(o?.detail!==undefined&&(!o.detail||!['product','customer','instruction'].every(k=>typeof o.detail[k]==='string'&&o.detail[k].length>0&&o.detail[k].length<=120)||!int(o.detail.quantity)||o.detail.quantity<1||o.detail.quantity>3))throw Error('Chi tiết đơn hàng không hợp lệ');
  if(o!==null&&o.kind!==undefined&&(!isOrderKind(o.kind)||o.size!==ORDER_TYPES[o.kind as keyof typeof ORDER_TYPES].size||!int(o.minutes)||o.minutes<1))throw Error('Loại đơn hàng không hợp lệ');
  if(v.stage!=='done'&&(!o||v.paid.includes(o.id)))throw Error('Trạng thái đơn không hợp lệ');
  if(v.ratings!==undefined&&(!Array.isArray(v.ratings)||!v.ratings.every((r:any)=>r&&typeof r.id==='string'&&int(r.stars)&&r.stars>=1&&r.stars<=5&&typeof r.late==='boolean'&&int(r.condition)&&r.condition<=100&&int(r.tip)&&int(r.bonusXP))))throw Error('Đánh giá không hợp lệ');

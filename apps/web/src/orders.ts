@@ -2,7 +2,8 @@ import type {OSMMap,Point} from './osm';
 import {findRoute,dist} from './navigation.ts';
 import {ORDER_TYPES,kindFor,orderFare,suggestedMinutes,type OrderKind} from './career/orderCatalog.ts';
 import {deliveryLocations} from './career/deliveryLocations.ts';
-export type Order={id:string;pickup:Point;delivery:Point;meters:number;fare:number;shop:string;pickupStreet?:string;deliveryStreet?:string;kind?:OrderKind;size?:number;minutes?:number};
+import {orderDetail,type OrderDetail} from './career/orderDetails.ts';
+export type Order={id:string;pickup:Point;delivery:Point;meters:number;fare:number;shop:string;detail?:OrderDetail;pickupStreet?:string;deliveryStreet?:string;kind?:OrderKind;size?:number;minutes?:number};
 export type Income={wallet:number;completed:number;meters:number};
 export const emptyIncome:Income={wallet:0,completed:0,meters:0};
 export function fare(meters:number){return 12000+Math.ceil(Math.max(0,meters)/100)*500}
@@ -10,7 +11,7 @@ export function readIncome(raw:string|null):Income{try{const v=JSON.parse(raw||'
 export function credit(income:Income,order:Order):Income{return {wallet:income.wallet+order.fare,completed:income.completed+1,meters:income.meters+Math.round(order.meters)}}
 export function makeOrders(map:OSMMap|null,batch:number,level=1):Order[]{
  const result:Order[]=[];
- const add=(pickup:Point,delivery:Point,meters:number,pickupStreet?:string,deliveryStreet?:string)=>{const i=result.length,kind=kindFor(batch,i,level),c=ORDER_TYPES[kind];result.push({id:'DN-'+String(batch*3+i+1).padStart(3,'0'),pickup,delivery,meters,fare:orderFare(kind,meters),shop:c.shop,pickupStreet,deliveryStreet,kind,size:c.size,minutes:suggestedMinutes(kind,meters)})};
+ const add=(pickup:Point,delivery:Point,meters:number,pickupStreet?:string,deliveryStreet?:string)=>{const i=result.length,kind=kindFor(batch,i,level),c=ORDER_TYPES[kind],info=orderDetail(kind,batch,i);result.push({id:'DN-'+String(batch*3+i+1).padStart(3,'0'),pickup,delivery,meters,fare:orderFare(kind,meters),shop:info.shop,detail:info.detail,pickupStreet,deliveryStreet,kind,size:c.size,minutes:suggestedMinutes(kind,meters)})};
  if(!map){add({x:-20,z:80},{x:140,z:-100},340);add({x:140,z:0},{x:-180,z:-20},340);add({x:-20,z:140},{x:140,z:140},160);return result}
  const {graph:g,pickups,deliveries}=deliveryLocations(map);
  if(!pickups.length||!deliveries.length)return result;
