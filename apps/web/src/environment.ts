@@ -33,3 +33,6 @@ export function weatherLabel(w:Weather|null,failed:boolean,now=Date.now()){
 
 // Shared visual-only weather state; no changes to vehicle physics or career saves.
 export const weatherVisual={rain:0,wetness:0,windX:0,windZ:0};
+
+let pending:Promise<Weather|null>|null=null;
+export function prefetchWeather():Promise<Weather|null>{if(pending)return pending;let cached:Weather|null=null;try{const v=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');if(validCache(v))cached=v}catch{}if(cached&&Date.now()-cached.fetchedAt<REFRESH_MS)return Promise.resolve(cached);const c=new AbortController(),timer=setTimeout(()=>c.abort(),5000);pending=fetch(WEATHER_URL,{signal:c.signal}).then(async r=>{if(!r.ok)throw Error('Weather HTTP '+r.status);const v=parseWeather(await r.json());try{localStorage.setItem(CACHE_KEY,JSON.stringify(v))}catch{}return v}).catch(()=>cached).finally(()=>{clearTimeout(timer);pending=null});return pending}
