@@ -5,12 +5,27 @@ import type {Checkpoint} from './policeCheckpoints';
 import type {Point,Road} from './osm';
 import {buildGraph,findRoute,progress,type Route} from './navigation';
 const fallback:Road[]=[-180,-20,140].flatMap(v=>[{name:'Đường mô phỏng',width:22,points:[-180,-100,-20,80,140,180].map(z=>({x:v,z}))},{name:'Đường mô phỏng',width:22,points:[-180,-100,-20,80,140,180].map(x=>({x,z:v}))}]);
+// Match the actual road segment, independently of the selected GPS destination.
+function currentStreet(roads:Road[],position:Point,heading:number):string{
+ let best=Infinity,name='Ngoài đường';
+ for(const road of roads){for(let i=1;i<road.points.length;i++){
+ const a=road.points[i-1],b=road.points[i],dx=b.x-a.x,dz=b.z-a.z,len2=dx*dx+dz*dz;if(len2<.0001)continue;
+ const t=Math.max(0,Math.min(1,((position.x-a.x)*dx+(position.z-a.z)*dz)/len2));
+ const distance=Math.hypot(position.x-a.x-t*dx,position.z-a.z-t*dz);
+ if(distance>road.width/2+2)continue;
+ const alignment=Math.abs((Math.sin(heading)*dx+Math.cos(heading)*dz)/Math.sqrt(len2));
+ const score=distance+(1-alignment)*2;
+ if(score<best){best=score;name=road.name.trim()||'Đường chưa có tên'}
+ }}
+ return name;
+}
 export function GPS({roads,position,heading,target,done,police=[],stations=[],garages=[],vehicle,energyTarget,onEnergyTarget}:{garages?:Garage[];vehicle?:Station['kind'];stations?:Station[];energyTarget?:Station|null;onEnergyTarget?:(s:Station|null)=>void;police?:Checkpoint[];roads?:Road[];position:Point;heading:number;target:Point;done:boolean}){
  const [garage,setGarage]=useState<Garage|null>(null);
  const [selected,setSelected]=useState<number|null>(null);
  const checkpoint=selected===null?undefined:police[selected];
  const destination=garage?.access??energyTarget?.access??checkpoint?.junction??target,finished=done&&!checkpoint&&!energyTarget&&!garage;
  const network=roads||fallback;
+ const street=useMemo(()=>currentStreet(network,position,heading),[network,position.x,position.z,heading]);
  const graph=useMemo(()=>buildGraph(network),[network]);
  const [route,setRoute]=useState<Route|null>(null);
  const [last,setLast]=useState<Point|null>(null);
@@ -30,5 +45,6 @@ export function GPS({roads,position,heading,target,done,police=[],stations=[],ga
  {stations.map(s=>{const [x,z]=xy(s.point),dx=x-80,dz=z-80,k=Math.min(1,69/Math.max(1,Math.abs(dx),Math.abs(dz)));return <g key={s.id} role="button" tabIndex={0} aria-label={s.id} onClick={()=>{setGarage(null);setSelected(null);onEnergyTarget?.(s)}} onKeyDown={e=>{if(e.key==='Enter'){setGarage(null);setSelected(null);onEnergyTarget?.(s)}}} transform={`translate(${80+dx*k} ${80+dz*k})`}><circle r="9" fill={energyTarget?.id===s.id?'#ffd45a':'#087f79'} stroke="white"/><text y="3" fontSize="9" textAnchor="middle" fill="white">{s.kind==='petrol'?'G':'E'}</text></g>})}
  {garages.map(s=>{const [x,z]=xy(s.point),dx=x-80,dz=z-80,k=Math.min(1,69/Math.max(1,Math.abs(dx),Math.abs(dz)));const choose=()=>{setSelected(null);onEnergyTarget?.(null);setGarage(s)};return <g key={s.id} role="button" tabIndex={0} aria-label={'Garage '+s.id} onClick={choose} onKeyDown={e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();choose()}}} transform={`translate(${80+dx*k} ${80+dz*k})`}><circle r="9" fill={garage?.id===s.id?'#ffd45a':'#a855f7'} stroke="white"/><text y="3" textAnchor="middle" fontSize="9" fill="white">R</text></g>})}
  <g pointerEvents="none" transform={`translate(80 80) rotate(${-heading*180/Math.PI})`}><path d="M0 -9 L6 7 L0 4 L-6 7Z" fill="#fff" stroke="#087f79" strokeWidth="1.5"/></g><text pointerEvents="none" x="8" y="14" fill="white" fontSize="10">B</text></svg>
+ <div className="gps-current-street" title={street}><span aria-hidden="true">📍</span><span>{street}</span></div>
  <div className="gps-instruction"><b>{finished?'✓ Hoàn thành':p?p.off>25?'Đang tìm lại đường':p.instruction:'Chưa tìm được tuyến'}</b><span>{!finished&&p?Math.round(p.turnDistance)+' m · '+p.name:''}</span><span>{!finished&&p?'Còn '+Math.round(p.remaining)+' m theo đường':''}</span><small>© OpenStreetMap contributors</small><label style={{fontSize:11}}><span className="gps-caption">CSGT: {police.length} chốt</span><select aria-label="Chọn chốt CSGT" style={{width:'100%',fontSize:12}} value={garage?'garage':energyTarget?'energy':checkpoint?String(selected):''} onChange={e=>{if(e.target.value==='energy'||e.target.value==='garage')return;setGarage(null);if(e.target.value==='repair'){setSelected(null);onEnergyTarget?.(null);setGarage([...garages].sort((a,b)=>Math.hypot(a.access.x-position.x,a.access.z-position.z)-Math.hypot(b.access.x-position.x,b.access.z-position.z))[0]??null);return;}if(e.target.value==='nearest'){setSelected(null);onEnergyTarget?.(stations.filter(s=>!vehicle||s.kind===vehicle).sort((a,b)=>Math.hypot(a.access.x-position.x,a.access.z-position.z)-Math.hypot(b.access.x-position.x,b.access.z-position.z))[0]??null);return;}onEnergyTarget?.(null);setSelected(e.target.value===''?null:Number(e.target.value))}}><option value="">GPS giao hàng</option><option value="repair">Garage gần nhất</option>{garage&&<option value="garage">Garage {garage.id}</option>}<option value="nearest">Trạm phù hợp gần nhất</option>{energyTarget&&<option value="energy">Trạm {energyTarget.id}</option>}{police.map((c,i)=><option key={i} value={i}>Chốt {i+1} · {Math.round(Math.hypot(c.officer.x-position.x,c.officer.z-position.z))}m</option>)}</select></label>{checkpoint&&<small>Đang dẫn đến chốt {Number(selected)+1} · {Math.round(Math.hypot(checkpoint.officer.x-position.x,checkpoint.officer.z-position.z))}m (đường chim bay)</small>}{!police.length&&<small>Không có chốt phù hợp trên bản đồ này.</small>}</div></aside>;
 }
