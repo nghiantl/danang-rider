@@ -66,6 +66,7 @@ export const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter'
 ];
 export async function loadBundledDaNangMap(signal?: AbortSignal): Promise<OSMMap> {
+  try{const prepared=await fetch(import.meta.env.BASE_URL+'data/danang-prepared-v1.json',{signal,cache:'default'});if(prepared.ok){const map=await prepared.json() as OSMMap;if(map.roads?.length&&Array.isArray(map.buildings)&&map.spawn&&map.pickup&&map.delivery&&Number.isFinite(map.extent))return map}}catch(error){if(signal?.aborted)throw error}
   // The file is generated from real OSM data by scripts/update-osm.mjs.
   // Never treat an empty or missing snapshot as a valid city.
   const response=await fetch(import.meta.env.BASE_URL+'data/danang-osm.json',{signal,cache:'default'});
@@ -85,7 +86,7 @@ export async function loadDaNangMap(signal?: AbortSignal): Promise<OSMMap> {
     const controller=new AbortController();
     const abort=()=>controller.abort();
     signal?.addEventListener('abort',abort,{once:true});
-    const timeout=setTimeout(()=>controller.abort(),12000);
+    const timeout=setTimeout(()=>controller.abort(),5000);
     try {
       const url=endpoint+'?data='+encodeURIComponent(query);
       const response=await fetch(url,{method:'GET',signal:controller.signal,headers:{Accept:'application/json'}});
