@@ -36,7 +36,7 @@ export function Traffic({roads,player,vehicles,crossingPeople,signalColliders}:{
  const choices=local.filter(({l})=>{const q=pose(l,l.length/2);return !insideJunction(l,l.length/2,lanes,signals)&&Math.hypot(q.x-p.x,q.z-p.z)>30&&cars.current.every(other=>{if(!other)return true;const o=pose(lanes[other.lane],other.t);return Math.hypot(q.x-o.x,q.z-o.z)>8})});
  if(choices.length){const {l,i:id}=choices[Math.floor(Math.random()*choices.length)];c={lane:id,t:l.length/2,speed:0,cruise:5+Math.random()*5,kind:i%3===0?1:0};cars.current[i]=c;q=pose(l,c.t)}else{delete cars.current[i];q=null}
  }else {q=pose(lanes[c.lane],c.t);if(before&&penetration(p.x,p.z,1.15,vehicleCollider(q.x,q.z,q.heading,c.kind))>0){Object.assign(c,before);c.speed=0;q=pose(lanes[c.lane],c.t);}}
- if(!q){for(let j=0;j<10;j++)place(details.current,i*10+j,0,-100,0,0,0,0,0);for(let j=0;j<4;j++){place(lights.current,i*4+j,0,-100,0,0,0,0,0);place(rims.current,i*4+j,0,-100,0,0,0,0,0)}if(brakes.current)place(brakes.current,i,0,-100,0,0,0,0,0);place(body.current,i,0,-100,0,0,0,0,0);place(top.current,i,0,-100,0,0,0,0,0);for(let j=0;j<4;j++)place(wheels.current,i*4+j,0,-100,0,0,0,0,0);continue}
+ if(!q){for(let j=0;j<14;j++)place(details.current,i*14+j,0,-100,0,0,0,0,0);for(let j=0;j<4;j++){place(lights.current,i*4+j,0,-100,0,0,0,0,0);place(rims.current,i*4+j,0,-100,0,0,0,0,0)}if(brakes.current)place(brakes.current,i,0,-100,0,0,0,0,0);place(body.current,i,0,-100,0,0,0,0,0);place(top.current,i,0,-100,0,0,0,0,0);for(let j=0;j<4;j++)place(wheels.current,i*4+j,0,-100,0,0,0,0,0);continue}
  if(!c)continue;
  published.push(vehicleCollider(q.x,q.z,q.heading,c.kind));
  const car=c.kind===1,w=car?1.65:0.48,d=car?3.6:1.65,h=q.heading;
@@ -57,7 +57,7 @@ export function Traffic({roads,player,vehicles,crossingPeople,signalColliders}:{
  [0.77,1.06,0.62,0.11,0.13,0.22,'paint'],
  [0,0.64,1.80,0.72,0.18,0.025,'trim'],
  [0,0.52,-1.80,0.35,0.12,0.025,'plate'],
- [0,0.52,1.80,0.35,0.12,0.025,'plate']
+ [0,0.52,1.80,0.35,0.12,0.025,'plate'],[-.72,1.20,-.15,.045,.42,.065,'paint'],[.72,1.20,-.15,.045,.42,.065,'paint'],[-.82,.77,0,.025,.055,1.55,'trim'],[.82,.77,0,.025,.055,1.55,'trim']
  ]:[
  [0,0.84,-0.26,0.36,0.12,0.62,'trim'],
  [0,0.72,0.54,0.38,0.52,0.28,'paint'],
@@ -68,9 +68,9 @@ export function Traffic({roads,player,vehicles,crossingPeople,signalColliders}:{
  [-0.14,0.78,0.03,0.13,0.52,0.20,'trim'],
  [0.14,0.78,0.03,0.13,0.52,0.20,'trim'],
  [-0.17,1.14,0.24,0.12,0.15,0.46,'jacket'],
- [0.17,1.14,0.24,0.12,0.15,0.46,'jacket']
+ [0.17,1.14,0.24,0.12,0.15,0.46,'jacket'],[-.18,.45,-.20,.10,.15,.46,'trim'],[.18,.45,-.20,.10,.15,.46,'trim'],[-.23,1.22,.52,.10,.07,.07,'mirror'],[.23,1.22,.52,.10,.07,.07,'mirror']
  ];
- for(let j=0;j<10;j++){const [x,y,z,width,height,depth,tint]=parts[j] as [number,number,number,number,number,number,string];localPart(details.current,i*10+j,x,y,z,width,height,depth);details.current.setColorAt(i*10+j,tintColor.set(tint==='paint'?['#d9dce1','#bf5348','#477eab','#e2bc66','#3d474d'][i%5]:tint==='plate'?'#e8e8dd':tint==='helmet'?'#d9dce1':tint==='jacket'?'#536b79':'#252b30'))}
+ for(let j=0;j<14;j++){const [x,y,z,width,height,depth,tint]=parts[j] as [number,number,number,number,number,number,string];localPart(details.current,i*14+j,x,y,z,width,height,depth);details.current.setColorAt(i*14+j,tintColor.set(tint==='paint'?['#d9dce1','#bf5348','#477eab','#e2bc66','#3d474d'][i%5]:tint==='mirror'?'#a9c7d2':tint==='plate'?'#e8e8dd':tint==='helmet'?'#d9dce1':tint==='jacket'?'#536b79':'#252b30'))}
  for(let j=0;j<4;j++){const side=j%2?1:-1,along=j<2?1:-1;const x=car?side*w*0.44:0,z=car?along*d*0.34:along*d*0.34;const active=car||j%2===0;localPart(wheels.current,i*4+j,x,0.28,z,active?(car?0.22:0.16):0,active?0.52:0,active?0.52:0);localPart(rims.current,i*4+j,x,0.28,z,active?(car?0.235:0.175):0,active?0.32:0,active?0.32:0);localPart(lights.current,i*4+j,car?side*0.59:0,car?0.79:0.83,along*d*0.495,active?(car?0.34:0.24):0,active?0.12:0,active?0.055:0);lights.current.setColorAt(i*4+j,tintColor.set(along===1?'#fff1c6':braking?'#ff2929':'#8a2225'))}
 
  }
@@ -79,5 +79,5 @@ export function Traffic({roads,player,vehicles,crossingPeople,signalColliders}:{
  if(brakes.current){brakes.current.instanceMatrix.needsUpdate=true;if(brakes.current.instanceColor)brakes.current.instanceColor.needsUpdate=true;}
  for(const mesh of [body.current,top.current,wheels.current,details.current,lights.current,rims.current]){mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;}
  });
- return <group><SignalPoles lanes={lanes} signals={signals} player={player} signalColliders={signalColliders}/><instancedMesh ref={brakes} args={[undefined,undefined,COUNT]} frustumCulled={false}><boxGeometry/><meshBasicMaterial/></instancedMesh><instancedMesh ref={body} args={[undefined,undefined,COUNT]} frustumCulled={false}><sphereGeometry args={[0.5,12,8]}/><meshStandardMaterial roughness={0.42} metalness={0.15}/></instancedMesh><instancedMesh ref={top} args={[undefined,undefined,COUNT]} frustumCulled={false}><sphereGeometry args={[0.5,12,8]}/><meshStandardMaterial roughness={0.35}/></instancedMesh><instancedMesh ref={wheels} args={[undefined,undefined,COUNT*4]} frustumCulled={false}><primitive object={wheelGeometry} attach="geometry"/><meshStandardMaterial color="#22282d"/></instancedMesh><instancedMesh ref={details} args={[undefined,undefined,COUNT*10]} frustumCulled={false}><boxGeometry/><meshStandardMaterial roughness={0.55}/></instancedMesh><instancedMesh ref={lights} args={[undefined,undefined,COUNT*4]} frustumCulled={false}><boxGeometry/><meshBasicMaterial/></instancedMesh><instancedMesh ref={rims} args={[undefined,undefined,COUNT*4]} frustumCulled={false}><primitive object={wheelGeometry} attach="geometry"/><meshStandardMaterial color="#a5adb3" metalness={0.35} roughness={0.5}/></instancedMesh></group>
+ return <group><SignalPoles lanes={lanes} signals={signals} player={player} signalColliders={signalColliders}/><instancedMesh ref={brakes} args={[undefined,undefined,COUNT]} frustumCulled={false}><boxGeometry/><meshBasicMaterial/></instancedMesh><instancedMesh ref={body} args={[undefined,undefined,COUNT]} frustumCulled={false}><sphereGeometry args={[0.5,16,12]}/><meshStandardMaterial roughness={0.42} metalness={0.15}/></instancedMesh><instancedMesh ref={top} args={[undefined,undefined,COUNT]} frustumCulled={false}><sphereGeometry args={[0.5,12,8]}/><meshStandardMaterial roughness={0.35}/></instancedMesh><instancedMesh ref={wheels} args={[undefined,undefined,COUNT*4]} frustumCulled={false}><primitive object={wheelGeometry} attach="geometry"/><meshStandardMaterial color="#22282d"/></instancedMesh><instancedMesh ref={details} args={[undefined,undefined,COUNT*14]} frustumCulled={false}><boxGeometry/><meshStandardMaterial roughness={0.55}/></instancedMesh><instancedMesh ref={lights} args={[undefined,undefined,COUNT*4]} frustumCulled={false}><boxGeometry/><meshBasicMaterial/></instancedMesh><instancedMesh ref={rims} args={[undefined,undefined,COUNT*4]} frustumCulled={false}><primitive object={wheelGeometry} attach="geometry"/><meshStandardMaterial color="#a5adb3" metalness={0.35} roughness={0.5}/></instancedMesh></group>
 }
