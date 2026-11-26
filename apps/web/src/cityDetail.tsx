@@ -9,14 +9,14 @@ import {environmentAt} from './environment';
 import type {Footprint} from './osm';
 type Box={x:number;y:number;z:number;w:number;h:number;d:number;a?:number;color:string};
 function Batch({items,glass=false}:{items:Box[];glass?:boolean}){
- const ref=useRef<THREE.InstancedMesh>(null);const material=useRef<THREE.MeshStandardMaterial>(null);const last=useRef(-1);useFrame(()=>{if(!glass||!material.current)return;const n=environmentAt(new Date()).night?0.35:0;if(n!==last.current){last.current=n;material.current.emissiveIntensity=n}});
+ const ref=useRef<THREE.InstancedMesh>(null);const material=useRef<THREE.MeshStandardMaterial>(null);const last=useRef(-1);useFrame(()=>{if(!glass||!material.current)return;const n=Math.round(Math.max(0,1-environmentAt(new Date()).daylight)*10)/10*1.1;if(n!==last.current){last.current=n;material.current.emissiveIntensity=n}});
  useLayoutEffect(()=>{const mesh=ref.current;if(!mesh)return;const o=new THREE.Object3D();items.forEach((b,i)=>{o.position.set(b.x,b.y,b.z);o.rotation.set(0,b.a||0,0);o.scale.set(b.w,b.h,b.d);o.updateMatrix();mesh.setMatrixAt(i,o.matrix);mesh.setColorAt(i,new THREE.Color(b.color))});mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere()},[items]);
- return items.length?<instancedMesh ref={ref} args={[undefined,undefined,items.length]}><boxGeometry/><meshStandardMaterial ref={material} roughness={glass?.32:.85} metalness={glass?.15:0} emissive={glass?'#b99a60':'#000000'} emissiveIntensity={0}/></instancedMesh>:null;
+ return items.length?<instancedMesh ref={ref} receiveShadow args={[undefined,undefined,items.length]}><boxGeometry/><meshStandardMaterial ref={material} roughness={glass?.32:.85} metalness={glass?.15:0} emissive={glass?'#b99a60':'#000000'} emissiveIntensity={0}/></instancedMesh>:null;
 }
 function House({b,index}:{b:Footprint;index:number}){
  const shape=useMemo(()=>{const s=new THREE.Shape();const p=b.outline;if(p&&p.length>=3){s.moveTo(p[0].x-b.x,-(p[0].z-b.z));p.slice(1).forEach(v=>s.lineTo(v.x-b.x,-(v.z-b.z)))}else{s.moveTo(-b.halfX,-b.halfZ);s.lineTo(b.halfX,-b.halfZ);s.lineTo(b.halfX,b.halfZ);s.lineTo(-b.halfX,b.halfZ)}s.closePath();return s},[b]);
  const options=useMemo(()=>({depth:b.height,bevelEnabled:false}),[b.height]);
- return <mesh position={[b.x,0,b.z]} rotation={[-Math.PI/2,0,0]}><extrudeGeometry args={[shape,options]}/><meshStandardMaterial color={['#e7d5b9','#d9e4df','#f0cdb6','#c6d4e4','#eee6d7','#b9c6b4'][index%6]} roughness={0.9}/></mesh>;
+ return <mesh castShadow receiveShadow position={[b.x,0,b.z]} rotation={[-Math.PI/2,0,0]}><extrudeGeometry args={[shape,options]}/><meshStandardMaterial color={['#e7d5b9','#d9e4df','#f0cdb6','#c6d4e4','#eee6d7','#b9c6b4'][index%6]} roughness={0.9}/></mesh>;
 }
 const ChunkDetail=React.memo(function ChunkDetail({chunk,context,textures}:{chunk:Chunk;context:Chunk[];textures:ReturnType<typeof useRoadTextures>}){
  const items=useMemo(()=>{

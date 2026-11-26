@@ -6,8 +6,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 06.5.2 · MINIMAP STREET NAME';
-const RELEASE_VERSION = '6.5.2';
+const SPRINT_LABEL = 'SPRINT 06.6 · REALISTIC LIGHTING';
+const RELEASE_VERSION = '6.6';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
 import {treePosition,type EnvironmentCollider} from './environmentCollision';
@@ -187,7 +187,7 @@ function Game({cargo,feedback,xpRatio,onViolation,tuning,maxSpeed,firstPerson,or
  const onCollision=React.useCallback((strength:number,car:boolean)=>{onCargoImpact(strength);audio.collision(strength,car);if(typeof navigator.vibrate==='function')navigator.vibrate(Math.round(45+strength*100));if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches&&flash.current){animation.current?.cancel();animation.current=flash.current.animate([{opacity:strength*0.32},{opacity:0}],{duration:220,easing:'ease-out'});}},[audio,onCargoImpact]);
  useEffect(()=>()=>animation.current?.cancel(),[]);
  const onLost=React.useCallback(()=>{for(const key of Object.keys(inputs.current) as InputKey[])inputs.current[key]=false;setContextLost(true)},[inputs]);const onRestored=React.useCallback(()=>setContextLost(false),[]);
- return <WebGLBoundary><Canvas fallback={<WebGLNotice message="Trình duyệt không hỗ trợ WebGL."/>} shadows={false} dpr={[0.85,1]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:false,powerPreference:'default',preserveDrawingBuffer:false}}>
+ return <WebGLBoundary><Canvas fallback={<WebGLNotice message="Trình duyệt không hỗ trợ WebGL."/>} shadows dpr={[0.85,1]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:false,powerPreference:'default',preserveDrawingBuffer:false}}>
   <ContextMonitor onLost={onLost} onRestored={onRestored}/>
   <color attach="background" args={['#a7d4e9']}/><fog attach="fog" args={['#a7d4e9',180,600]}/>
   <Environment map={map} player={player} onStatus={onStatus} audioWeather={audioWeather} lampColliders={lampColliders}/>
