@@ -1,3 +1,4 @@
+import {FaceDetails} from './characterVisuals';
 import {useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
@@ -12,7 +13,7 @@ function Station({c,player}:{c:Checkpoint;player:React.RefObject<Point>}){
  <Box p={[0,1.13,0]} s={[0.43,0.58,0.25]} color="#d8b56b"/>
  {[-1,1].map(s=><group key={s}><Box p={[s*.12,.48,0]} s={[.19,.72,.21]} color="#c5a05b"/><Box p={[s*.12,.1,.06]} s={[.2,.16,.31]} color="#252a2b"/><Box p={[s*.16,1.43,0]} s={[.13,.05,.25]} color="#b92c32"/></group>)}
  <mesh position={[0,1.65,0]}><sphereGeometry args={[.15,10,8]}/><meshStandardMaterial color="#d6a47e"/></mesh>
- <mesh position={[0,1.79,0]}><cylinderGeometry args={[.19,.19,.12,12]}/><meshStandardMaterial color="#c9a35b"/></mesh>
+ <group position={[0,1.65,0]}><FaceDetails skin="#d6a47e" forward={1}/></group><Box p={[0,.88,.13]} s={[.43,.07,.035]} color="#493e2c"/><Box p={[.11,1.24,.14]} s={[.13,.12,.025]} color="#b99a59"/><Box p={[-.11,1.24,.14]} s={[.13,.12,.025]} color="#b99a59"/><mesh position={[0,1.79,0]}><cylinderGeometry args={[.19,.19,.12,12]}/><meshStandardMaterial color="#c9a35b"/></mesh>
  <Box p={[0,1.75,.12]} s={[.31,.035,.24]} color="#39302a"/><Box p={[0,1.4,.14]} s={[.1,.12,.025]} color="#b72b31"/>
  <Box p={[-.29,1.1,0]} s={[.15,.55,.16]} color="#d8b56b"/>
  <group ref={arm} position={[.29,1.4,0]}><Box p={[0,-.22,0]} s={[.15,.44,.16]} color="#d8b56b"/><Box p={[0,-.47,0]} s={[.12,.13,.13]} color="#d6a47e"/>{[0,1,2,3].map(i=><Box key={i} p={[0,-.47,.09+i*.09]} s={[.065,.065,.09]} color={i%2?'#f5f5e9':'#222222'}/>)}</group>

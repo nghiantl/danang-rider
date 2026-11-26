@@ -13,7 +13,7 @@ export function Pedestrians({map,player,world,crossingPeople,people,hits}:{peopl
  const falls=useRef(new Map<number,{age:number;hit:PedestrianHit;x:number;z:number}>());
  const walkers=useRef<(Walker|null)[]>([]);
  const torso=useRef<THREE.InstancedMesh>(null),head=useRef<THREE.InstancedMesh>(null),limbs=useRef<THREE.InstancedMesh>(null);
- const hair=useRef<THREE.InstancedMesh>(null),shoes=useRef<THREE.InstancedMesh>(null),hands=useRef<THREE.InstancedMesh>(null);
+ const accessories=useRef<THREE.InstancedMesh>(null);const hair=useRef<THREE.InstancedMesh>(null),shoes=useRef<THREE.InstancedMesh>(null),hands=useRef<THREE.InstancedMesh>(null);
  const root=useMemo(()=>new THREE.Object3D(),[]),part=useMemo(()=>new THREE.Matrix4(),[]);
  const dummy=useMemo(()=>new THREE.Object3D(),[]);
  const nearby=useRef<number[]>([]),last=useRef(-10);
@@ -27,7 +27,7 @@ export function Pedestrians({map,player,world,crossingPeople,people,hits}:{peopl
  for(const mesh of [torso.current,head.current,hair.current,hands.current,limbs.current])if(mesh?.instanceColor)mesh.instanceColor.needsUpdate=true;
  },[paths]);
  useFrame(({clock},raw)=>{
- if(!torso.current||!head.current||!limbs.current||!hair.current||!shoes.current||!hands.current)return;
+ if(!torso.current||!head.current||!limbs.current||!hair.current||!shoes.current||!hands.current||!accessories.current)return;
  const crossing:Point[]=[],colliders:PedestrianCollider[]=[];
  for(const hit of hits.current.splice(0)){const w=walkers.current[hit.id];if(w&&!falls.current.has(hit.id)){const q=walkerPose(w,paths[w.path]);falls.current.set(hit.id,{age:0,hit,x:q.x,z:q.z})}}
  const p=player.current,dt=Math.min(raw,0.05);
@@ -48,7 +48,7 @@ export function Pedestrians({map,player,world,crossingPeople,people,hits}:{peopl
  }
  walkers.current[i]=w;
  }
- if(!w){place(hair.current,i,0,-100,0,0,0,0,0);for(let j=0;j<2;j++){place(shoes.current,i*2+j,0,-100,0,0,0,0,0);place(hands.current,i*2+j,0,-100,0,0,0,0,0)}place(torso.current,i,0,-100,0,0,0,0,0);place(head.current,i,0,-100,0,0,0,0,0);for(let j=0;j<4;j++)place(limbs.current,i*4+j,0,-100,0,0,0,0,0);continue}
+ if(!w){place(accessories.current,i,0,-100,0,0,0,0,0);place(hair.current,i,0,-100,0,0,0,0,0);for(let j=0;j<2;j++){place(shoes.current,i*2+j,0,-100,0,0,0,0,0);place(hands.current,i*2+j,0,-100,0,0,0,0,0)}place(torso.current,i,0,-100,0,0,0,0,0);place(head.current,i,0,-100,0,0,0,0,0);for(let j=0;j<4;j++)place(limbs.current,i*4+j,0,-100,0,0,0,0,0);continue}
  const path=paths[w.path],old={...w};
  const atEnd=w.t<=0.001||w.t>=path.length-0.001;const signal=path.crossing?signalState(path.crossing,path.axis??0,clock.elapsedTime):null;
  let moving=!falls.current.has(i)&&(!atEnd||!signal||(signal.color==='red'&&signal.remaining>path.length/w.speed+1))&&stepWalker(w,path,path.crossing&&!atEnd?{x:Infinity,z:Infinity}:p,dt);q=walkerPose(w,path);
@@ -56,19 +56,19 @@ export function Pedestrians({map,player,world,crossingPeople,people,hits}:{peopl
  if(path.crossing&&w.t>0.01&&w.t<path.length-0.01)crossing.push({x:q.x,z:q.z});
  let fall=falls.current.get(i);let x=q.x,z=q.z,y=0.11,h=q.heading,tilt=0;if(fall){fall.age+=dt;const f=fallPose(fall.age,fall.hit.speed);const ox=fall.x+fall.hit.dx*f.offset,oz=fall.z+fall.hit.dz*f.offset;if(clear(ox,oz)){x=ox;z=oz}y+=f.lift;h=Math.atan2(fall.hit.dx,fall.hit.dz);tilt=f.tilt;if(fall.age>2.1){const k=Math.min(1,(fall.age-2.1)/0.8);x+=(q.x-x)*k;z+=(q.z-z)*k}if(f.done)falls.current.delete(i);if(path.crossing)crossing.push({x,z});}else colliders.push({id:i,x,z});root.position.set(x,y,z);root.rotation.set(tilt,h,0,'YXZ');root.updateMatrix();
  const scale=0.88+(i%5)*0.045,swing=moving?Math.sin(w.phase)*0.55:0;
- place(torso.current,i,0,1.16*scale,0,0,0.42*scale,0.58*scale,0.25*scale);
+ place(torso.current,i,0,1.16*scale,0,0,(i%3===0?.36:.43)*scale,0.58*scale,0.25*scale);
  place(head.current,i,0,1.65*scale,0,0,0.27*scale,0.32*scale,0.27*scale);
- place(hair.current,i,0,1.78*scale,-0.025*scale,0,0.28*scale,0.16*scale,0.28*scale);
- for(let j=0;j<2;j++){const side=j?1:-1;place(shoes.current,i*2+j,side*0.12*scale,0.10*scale,Math.sin(swing*side)*0.32*scale+0.035,0,0.16*scale,0.13*scale,0.28*scale);place(hands.current,i*2+j,side*0.27*scale,0.87*scale,Math.sin(swing*side)*0.22*scale,0,0.12*scale,0.16*scale,0.12*scale)}
+ place(hair.current,i,0,1.78*scale,-0.025*scale,0,0.28*scale,(i%3===0?.25:.16)*scale,0.28*scale);
+ place(accessories.current,i,0,1.15*scale,-.18*scale,0,i%3===0?.30*scale:0,i%3===0?.38*scale:0,i%3===0?.16*scale:0);for(let j=0;j<2;j++){const side=j?1:-1;place(shoes.current,i*2+j,side*0.12*scale,0.10*scale,Math.sin(swing*side)*0.32*scale+0.035,0,0.16*scale,0.13*scale,0.28*scale);place(hands.current,i*2+j,side*0.27*scale,0.87*scale,Math.sin(swing*side)*0.22*scale,0,0.12*scale,0.16*scale,0.12*scale)}
  for(let j=0;j<4;j++){
  const arm=j>=2,side=j%2?1:-1,x=side*(arm?0.27:0.12)*scale;
  place(limbs.current,i*4+j,x,(arm?1.12:0.46)*scale,0,0,0.13*scale,(arm?0.48:0.69)*scale,0.15*scale,swing*side*(arm?-1:1));
  }
  }
  crossingPeople.current=crossing;people.current=colliders;
- for(const mesh of [torso.current,head.current,limbs.current,hair.current,shoes.current,hands.current])mesh.instanceMatrix.needsUpdate=true;
+ for(const mesh of [torso.current,head.current,limbs.current,hair.current,shoes.current,hands.current,accessories.current])mesh.instanceMatrix.needsUpdate=true;
  });
- return <group>{stripes.length>0&&<CrosswalkMarks stripes={stripes}/>}<instancedMesh ref={torso} args={[undefined,undefined,COUNT]} frustumCulled={false}><sphereGeometry args={[0.5,12,8]}/><meshStandardMaterial/></instancedMesh><instancedMesh ref={head} args={[undefined,undefined,COUNT]} frustumCulled={false}><sphereGeometry args={[0.5,8,6]}/><meshStandardMaterial/></instancedMesh><instancedMesh ref={limbs} args={[undefined,undefined,COUNT*4]} frustumCulled={false}><capsuleGeometry args={[0.5,0.01,4,8]}/><meshStandardMaterial/></instancedMesh><instancedMesh ref={hair} args={[undefined,undefined,COUNT]} frustumCulled={false}><sphereGeometry args={[0.5,10,6]}/><meshStandardMaterial/></instancedMesh><instancedMesh ref={shoes} args={[undefined,undefined,COUNT*2]} frustumCulled={false}><sphereGeometry args={[0.5,8,6]}/><meshStandardMaterial color="#25282c"/></instancedMesh><instancedMesh ref={hands} args={[undefined,undefined,COUNT*2]} frustumCulled={false}><sphereGeometry args={[0.5,8,6]}/><meshStandardMaterial/></instancedMesh></group>
+ return <group>{stripes.length>0&&<CrosswalkMarks stripes={stripes}/>}<instancedMesh ref={torso} args={[undefined,undefined,COUNT]} frustumCulled={false}><sphereGeometry args={[0.5,12,8]}/><meshStandardMaterial/></instancedMesh><instancedMesh ref={head} args={[undefined,undefined,COUNT]} frustumCulled={false}><sphereGeometry args={[0.5,12,8]}/><meshStandardMaterial/></instancedMesh><instancedMesh ref={limbs} args={[undefined,undefined,COUNT*4]} frustumCulled={false}><capsuleGeometry args={[0.5,0.01,4,8]}/><meshStandardMaterial/></instancedMesh><instancedMesh ref={accessories} args={[undefined,undefined,COUNT]} frustumCulled={false}><boxGeometry/><meshStandardMaterial color="#63574b"/></instancedMesh><instancedMesh ref={hair} args={[undefined,undefined,COUNT]} frustumCulled={false}><sphereGeometry args={[0.5,10,6]}/><meshStandardMaterial/></instancedMesh><instancedMesh ref={shoes} args={[undefined,undefined,COUNT*2]} frustumCulled={false}><sphereGeometry args={[0.5,8,6]}/><meshStandardMaterial color="#25282c"/></instancedMesh><instancedMesh ref={hands} args={[undefined,undefined,COUNT*2]} frustumCulled={false}><sphereGeometry args={[0.5,8,6]}/><meshStandardMaterial/></instancedMesh></group>
 }
 
 function CrosswalkMarks({stripes}:{stripes:{x:number;z:number;angle:number;bar:number}[]}){const ref=useRef<THREE.InstancedMesh>(null);useLayoutEffect(()=>{const d=new THREE.Object3D();stripes.forEach((s,i)=>{d.position.set(s.x,0.095,s.z);d.rotation.set(0,s.angle,0);d.scale.set(1,1,s.bar);d.updateMatrix();ref.current?.setMatrixAt(i,d.matrix)});if(ref.current){ref.current.instanceMatrix.needsUpdate=true;ref.current.computeBoundingSphere()}},[stripes]);return <instancedMesh ref={ref} args={[undefined,undefined,stripes.length]}><boxGeometry args={[CROSSWALK_DEPTH,0.012,1]}/><meshStandardMaterial color="#eeeae0"/></instancedMesh>}

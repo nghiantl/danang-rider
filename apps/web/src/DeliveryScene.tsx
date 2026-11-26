@@ -1,3 +1,4 @@
+import {FaceDetails,ShirtDetails} from './characterVisuals';
 import {useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
@@ -9,7 +10,7 @@ export function CargoModel({kind}:{kind:CargoKind}){return <group>{kind==='drink
 
 export const DELIVERY_SECONDS=6;
 function Person({shirt,helmet=false}:{shirt:string;helmet?:boolean}){
- return <group><mesh position={[0,1.15,0]}><capsuleGeometry args={[.21,.36,4,8]}/><meshStandardMaterial color={shirt}/></mesh><mesh position={[0,1.65,0]}><sphereGeometry args={[.16,12,8]}/><meshStandardMaterial color={helmet?'#263746':'#d9a77f'}/></mesh>{[-1,1].map(s=><group key={s}><mesh position={[s*.12,.43,0]}><capsuleGeometry args={[.09,.62,4,8]}/><meshStandardMaterial color="#26364a"/></mesh><mesh position={[s*.27,1.12,-.17]} rotation={[.85,0,0]}><capsuleGeometry args={[.065,.36,4,8]}/><meshStandardMaterial color="#d9a77f"/></mesh></group>)}</group>
+ return <group><mesh position={[0,1.15,0]}><capsuleGeometry args={[.21,.36,4,8]}/><meshStandardMaterial color={shirt}/></mesh><mesh position={[0,1.65,0]}><sphereGeometry args={[.16,12,8]}/><meshStandardMaterial color="#d9a77f"/></mesh><group position={[0,1.65,0]}><FaceDetails helmet={helmet}/></group><mesh position={[0,1.76,.025]} scale={[.33,.19,.33]}><sphereGeometry args={[.5,12,8]}/><meshStandardMaterial color={helmet?'#263746':'#352a24'}/></mesh><group position={[0,1.15,0]}><ShirtDetails/></group>{[-1,1].map(s=><group key={s}><mesh position={[s*.12,.43,0]}><capsuleGeometry args={[.09,.62,4,8]}/><meshStandardMaterial color="#26364a"/></mesh><mesh position={[s*.12,.09,-.055]} scale={[.18,.13,.29]}><sphereGeometry args={[.5,10,8]}/><meshStandardMaterial color="#252b30"/></mesh><mesh position={[s*.27,.95,-.29]} scale={[.11,.12,.11]}><sphereGeometry args={[.5,10,8]}/><meshStandardMaterial color="#d9a77f"/></mesh><mesh position={[s*.27,1.12,-.17]} rotation={[.85,0,0]}><capsuleGeometry args={[.065,.36,4,8]}/><meshStandardMaterial color="#d9a77f"/></mesh></group>)}</group>
 }
 export function WaitingCustomer({target,stage,player}:{target:Point;stage:string;player:React.RefObject<Point>}){
  const root=useRef<THREE.Group>(null);
