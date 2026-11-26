@@ -1,3 +1,5 @@
+import {graphics,budgets} from './performance';
+import {prefetchWeather} from './environment';
 import {trafficMonitor,fine,LABELS,type Violation} from './career/trafficLaw';
 import type {VehicleCollider} from './vehicleCollision';
 import React, { useEffect, useMemo, useRef, useState } from 'react';
@@ -6,8 +8,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 06.7.1 · STREET LIGHTING';
-const RELEASE_VERSION = '6.7.1';
+const SPRINT_LABEL = 'SPRINT 06.7.2 · PERFORMANCE';
+const RELEASE_VERSION = '6.7.2';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
 import {treePosition,type EnvironmentCollider} from './environmentCollision';
@@ -162,13 +164,9 @@ function RiderStatusBars({health,xpRatio}:{health:number;xpRatio:number}){
  </group>
 }
 function AdaptiveResolution(){
- const {gl,setDpr}=useThree();const sample=useRef({elapsed:0,frames:0,cooldown:0});
- useFrame((_,dt)=>{const s=sample.current;if(dt>0.25){s.elapsed=0;s.frames=0;return} s.elapsed+=dt;s.frames++;if(s.elapsed<3)return;
- const fps=s.frames/s.elapsed;s.elapsed=0;s.frames=0;if(s.cooldown>0){s.cooldown--;return}
- const current=gl.getPixelRatio(),max=Math.min(1.25,window.devicePixelRatio||1);
- const next=fps<38?Math.max(0.85,current-0.15):fps>55?Math.min(max,current+0.1):current;
- if(Math.abs(next-current)>0.01){setDpr(next);s.cooldown=2}
- });return null;
+ const {gl,setDpr}=useThree();const sample=useRef({elapsed:0,frames:0,good:0});
+ useEffect(()=>{const ctx=gl.getContext(),ext=ctx.getExtension('WEBGL_debug_renderer_info');graphics.renderer=String(ext?ctx.getParameter(ext.UNMASKED_RENDERER_WEBGL):ctx.getParameter(ctx.RENDERER));console.info('[Rider GPU]',graphics.renderer);graphics.tier=/swiftshader|llvmpipe|software/i.test(graphics.renderer)?0:2;setDpr(Math.min(window.devicePixelRatio||1,budgets[graphics.tier].dpr));return()=>{graphics.tier=2}},[gl,setDpr]);
+ useFrame((_,dt)=>{if(document.hidden)return;const s=sample.current;s.elapsed+=Math.min(dt,1);s.frames++;if(s.elapsed<3)return;const fps=s.frames/s.elapsed;s.elapsed=0;s.frames=0;graphics.fps=fps;graphics.drawCalls=gl.info.render.calls;graphics.triangles=gl.info.render.triangles;const old=graphics.tier;if(fps<32){graphics.tier=Math.max(0,old-1);s.good=0}else if(fps>55){if(++s.good>=5){graphics.tier=Math.min(2,old+1);s.good=0}}else s.good=0;if(old!==graphics.tier){setDpr(Math.min(window.devicePixelRatio||1,budgets[graphics.tier].dpr));console.info('[Rider quality]',{...graphics})}});return null;
 }
 function WebGLNotice({message}:{message:string}){return <div role="alert" style={{position:'absolute',inset:0,zIndex:1000,display:'grid',placeItems:'center',background:'#111827',color:'white',padding:24,textAlign:'center'}}><div><h2>Không thể hiển thị đồ họa 3D</h2><p>{message}</p><p>Nếu vẫn lỗi, đóng các tab game khác và khởi động lại trình duyệt.</p><button onClick={()=>window.location.reload()}>Tải lại game</button></div></div>}
 class WebGLBoundary extends React.Component<{children:React.ReactNode},{failed:boolean}>{state={failed:false};static getDerivedStateFromError(){return {failed:true}};render(){return this.state.failed?<WebGLNotice message="Không tạo được WebGL context. Hãy thử tải lại game."/>:this.props.children}}
@@ -187,7 +185,7 @@ function Game({cargo,feedback,xpRatio,onViolation,tuning,maxSpeed,firstPerson,or
  const onCollision=React.useCallback((strength:number,car:boolean)=>{onCargoImpact(strength);audio.collision(strength,car);if(typeof navigator.vibrate==='function')navigator.vibrate(Math.round(45+strength*100));if(!window.matchMedia('(prefers-reduced-motion: reduce)').matches&&flash.current){animation.current?.cancel();animation.current=flash.current.animate([{opacity:strength*0.32},{opacity:0}],{duration:220,easing:'ease-out'});}},[audio,onCargoImpact]);
  useEffect(()=>()=>animation.current?.cancel(),[]);
  const onLost=React.useCallback(()=>{for(const key of Object.keys(inputs.current) as InputKey[])inputs.current[key]=false;setContextLost(true)},[inputs]);const onRestored=React.useCallback(()=>setContextLost(false),[]);
- return <WebGLBoundary><Canvas fallback={<WebGLNotice message="Trình duyệt không hỗ trợ WebGL."/>} shadows dpr={[0.85,1]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:false,powerPreference:'default',preserveDrawingBuffer:false}}>
+ return <WebGLBoundary><Canvas fallback={<WebGLNotice message="Trình duyệt không hỗ trợ WebGL."/>} shadows dpr={[0.85,1]} camera={{position:[0,9,5],fov:65,near:0.1,far:1000}} gl={{antialias:false,powerPreference:'high-performance',preserveDrawingBuffer:false}}>
   <ContextMonitor onLost={onLost} onRestored={onRestored}/>
   <color attach="background" args={['#a7d4e9']}/><fog attach="fog" args={['#a7d4e9',180,600]}/>
   <Environment map={map} player={player} onStatus={onStatus} audioWeather={audioWeather} lampColliders={lampColliders}/>
@@ -197,6 +195,7 @@ function Game({cargo,feedback,xpRatio,onViolation,tuning,maxSpeed,firstPerson,or
 type Telemetry={speed:number;distance:number;x:number;z:number;heading:number;fps:number};
 const fmt=(n:number)=>Math.round(n).toLocaleString('vi-VN');
 function App(){
+ useEffect(()=>{void prefetchWeather()},[]);
  const [initial]=useState(()=>{try{const raw=localStorage.getItem(KEY);if(raw)return {career:parseCareer(raw),error:''};return {career:newCareer(localStorage.getItem('danang-rider-income-v1')),error:''}}catch{return {career:newCareer(null),error:'Không đọc được dữ liệu lưu. Hãy nhập bản sao lưu trước khi chơi.'}}});
  const [career,setCareer]=useState(initial.career);const [saveError,setSaveError]=useState(initial.error);const blockedSave=useRef(!!initial.error);const latest=useRef(career);const [spawn,setSpawn]=useState<Point>({x:0,z:-20});
  const audio=useMemo(()=>new GameAudio(),[]);const [muted,setMuted]=useState(false);
