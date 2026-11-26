@@ -6,8 +6,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 06.5 · REALISTIC ANIMATION';
-const RELEASE_VERSION = '6.5';
+const SPRINT_LABEL = 'SPRINT 06.5.1 · STATUS BAR FIX';
+const RELEASE_VERSION = '6.5.1';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
 import {treePosition,type EnvironmentCollider} from './environmentCollision';
@@ -148,10 +148,19 @@ function Rider({cargo,feedback,xpRatio,onViolation,tuning,maxSpeed,firstPerson,o
    if(state.clock.elapsedTime-lastUi.current>0.12){lastUi.current=state.clock.elapsedTime;onTick({speed:Math.abs(velocity.current)*3.6,distance:distance.current,x:g.position.x,z:g.position.z,heading:heading.current,fps:fps.current});}
  });
  return <group ref={group} position={[spawn.x,0,spawn.z]}>
-   {!firstPerson&&<group position={[0,2.35,0]}><mesh position={[0,.12,0]}><planeGeometry args={[.85,.085]}/><meshBasicMaterial color="#491b24" side={THREE.DoubleSide} depthTest={false}/></mesh><mesh position={[-.425+.425*health/100,.12,.005]}><planeGeometry args={[.85*health/100,.07]}/><meshBasicMaterial color="#ef4444" side={THREE.DoubleSide} depthTest={false}/></mesh><mesh><planeGeometry args={[.85,.085]}/><meshBasicMaterial color="#143b29" side={THREE.DoubleSide} depthTest={false}/></mesh><mesh position={[-.425+.425*xpRatio,0,.005]}><planeGeometry args={[.85*xpRatio,.07]}/><meshBasicMaterial color="#22c55e" side={THREE.DoubleSide} depthTest={false}/></mesh></group>}{feedback&&<FloatingFeedback key={feedback.id} positive={feedback.positive} amount={feedback.amount} firstPerson={firstPerson}/>}<RiderModel cargo={cargo} customPaint={tuning.paint} boxPaint={tuning.box} firstPerson={firstPerson} dismounted={servicePose?.station.kind==='electric'} vehicle={vehicle} gender={gender} motion={motion} action={action}/><DeliveryScene action={action} gender={gender} target={target}/>
+   {!firstPerson&&<RiderStatusBars health={health} xpRatio={xpRatio}/>}{feedback&&<FloatingFeedback key={feedback.id} positive={feedback.positive} amount={feedback.amount} firstPerson={firstPerson}/>}<RiderModel cargo={cargo} customPaint={tuning.paint} boxPaint={tuning.box} firstPerson={firstPerson} dismounted={servicePose?.station.kind==='electric'} vehicle={vehicle} gender={gender} motion={motion} action={action}/><DeliveryScene action={action} gender={gender} target={target}/>
  </group>;
 }
 // Sample sustained frame times rather than reacting to individual slow frames.
+function RiderStatusBars({health,xpRatio}:{health:number;xpRatio:number}){
+ const root=useRef<THREE.Group>(null);
+ const parentRotation=useMemo(()=>new THREE.Quaternion(),[]);
+ useFrame(({camera})=>{const g=root.current;if(!g?.parent)return;g.parent.getWorldQuaternion(parentRotation);g.quaternion.copy(parentRotation.invert()).multiply(camera.quaternion)});
+ const h=THREE.MathUtils.clamp(health/100,0,1),x=THREE.MathUtils.clamp(xpRatio,0,1);
+ return <group ref={root} position={[0,2.35,0]}>
+ {([{y:.12,value:h,bg:'#491b24',fg:'#ef4444'},{y:0,value:x,bg:'#143b29',fg:'#22c55e'}]).map(({y,value,bg,fg})=><group key={y}><mesh position={[0,y,0]} renderOrder={110} frustumCulled={false}><planeGeometry args={[.85,.085]}/><meshBasicMaterial color={bg} transparent depthTest={false} depthWrite={false} toneMapped={false}/></mesh>{value>0&&<mesh position={[-.425+.425*value,y,.005]} renderOrder={111} frustumCulled={false}><planeGeometry args={[.85*value,.07]}/><meshBasicMaterial color={fg} transparent depthTest={false} depthWrite={false} toneMapped={false}/></mesh>}</group>)}
+ </group>
+}
 function AdaptiveResolution(){
  const {gl,setDpr}=useThree();const sample=useRef({elapsed:0,frames:0,cooldown:0});
  useFrame((_,dt)=>{const s=sample.current;if(dt>0.25){s.elapsed=0;s.frames=0;return} s.elapsed+=dt;s.frames++;if(s.elapsed<3)return;
