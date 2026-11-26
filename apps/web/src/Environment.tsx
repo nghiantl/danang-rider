@@ -3,10 +3,11 @@ import {useFrame,useThree} from '@react-three/fiber';
 import * as THREE from 'three';
 import type {EnvironmentCollider} from './environmentCollision';
 import type {OSMMap,Point} from './osm';
-import {environmentAt,clockLabel,parseWeather,validCache,weatherLabel,WEATHER_URL,REFRESH_MS,CACHE_KEY,type Weather} from './environment';
-const RAIN=350,LAMPS=12;
+import {environmentAt,clockLabel,parseWeather,validCache,weatherLabel,WEATHER_URL,REFRESH_MS,CACHE_KEY,type Weather,weatherVisual} from './environment';
+const RAIN=700,LAMPS=12;
 export function Environment({map,player,onStatus,audioWeather,lampColliders}:{lampColliders:React.RefObject<EnvironmentCollider[]>;audioWeather:React.RefObject<{rain:number;night:boolean}>;map:OSMMap|null;player:React.RefObject<Point>;onStatus:(s:string)=>void}){
  const {scene}=useThree();
+ useEffect(()=>()=>{weatherVisual.rain=0;weatherVisual.wetness=0;weatherVisual.windX=0;weatherVisual.windZ=0},[]);
  const lampMaterial=useRef<THREE.MeshStandardMaterial>(null);const shadowAnchor=useMemo(()=>new THREE.Vector3(),[]);
  useEffect(()=>()=>{lampColliders.current=[]},[lampColliders]);
  const hemi=useRef<THREE.HemisphereLight>(null),sun=useRef<THREE.DirectionalLight>(null),rain=useRef<THREE.LineSegments>(null);
@@ -28,6 +29,7 @@ export function Environment({map,player,onStatus,audioWeather,lampColliders}:{la
  const colors=useMemo(()=>({day:new THREE.Color('#a7d4e9'),night:new THREE.Color('#101c36'),dusk:new THREE.Color('#e7a27a'),gray:new THREE.Color('#8494a3'),sky:new THREE.Color(),sun:new THREE.Color()}),[]);
  const drops=useMemo(()=>Array.from({length:RAIN},()=>({x:Math.random()*40-20,y:Math.random()*18,z:Math.random()*40-20})),[]);
  const geometry=useMemo(()=>{const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(RAIN*6),3));return g},[]);
+ useEffect(()=>()=>geometry.dispose(),[geometry]);
  const dummy=useMemo(()=>new THREE.Object3D(),[]);
  const locations=useMemo(()=>{const out:Point[]=[];if(map)for(const r of map.roads){if(r.width<8)continue;for(let i=1;i<r.points.length;i++){const a=r.points[i-1],b=r.points[i],len=Math.hypot(b.x-a.x,b.z-a.z);if(len<18)continue;const ux=(b.x-a.x)/len,uz=(b.z-a.z)/len;for(let t=9;t<len-5;t+=30)out.push({x:a.x+ux*t-uz*(r.width/2+1.5),z:a.z+uz*t+ux*(r.width/2+1.5)})}}if(!map)return out;
  const segments=map.roads.flatMap(r=>r.points.slice(1).map((b,i)=>({a:r.points[i],b,width:r.width})));
@@ -39,6 +41,9 @@ export function Environment({map,player,onStatus,audioWeather,lampColliders}:{la
  wet.current+=((weather.current?.rain??0)-wet.current)*(1-Math.exp(-dt*0.8));
  cloud.current+=((weather.current?.cloud??0)-cloud.current)*(1-Math.exp(-dt*0.5));
  mist.current+=((weather.current?.fog??0)-mist.current)*(1-Math.exp(-dt*0.5));
+ weatherVisual.rain=wet.current;weatherVisual.wetness=THREE.MathUtils.damp(weatherVisual.wetness,wet.current>0.05?Math.min(1,wet.current*2):0,wet.current>.05?.12:.025,dt);
+ const wind=weather.current?.windDirection??0, speed=Math.min(12,(weather.current?.windSpeed??0)/3.6);
+ weatherVisual.windX=THREE.MathUtils.damp(weatherVisual.windX,-Math.sin(wind*Math.PI/180)*speed,1,dt);weatherVisual.windZ=THREE.MathUtils.damp(weatherVisual.windZ,Math.cos(wind*Math.PI/180)*speed,1,dt);
  audioWeather.current.rain=wet.current;audioWeather.current.night=e.night;
  colors.sky.copy(colors.night).lerp(colors.day,e.daylight).lerp(colors.dusk,e.twilight*0.55).lerp(colors.gray,cloud.current*e.daylight*0.65);
  if(scene.background instanceof THREE.Color)scene.background.copy(colors.sky);else scene.background=colors.sky.clone();
@@ -46,7 +51,7 @@ export function Environment({map,player,onStatus,audioWeather,lampColliders}:{la
  if(hemi.current){hemi.current.intensity=.48+e.daylight*(1.15+cloud.current*.25);hemi.current.color.copy(colors.sky).lerp(colors.day,.35);hemi.current.groundColor.set('#8b8171');}
  if(sun.current){const light=sun.current;light.intensity=.04+e.daylight*(2.3-cloud.current*1.85);light.color.copy(colors.sun.set('#fff8eb').lerp(colors.dusk,e.twilight*.8));const angle=(e.hour-6)/12*Math.PI;shadowAnchor.set(Math.round(p.x/4)*4,0,Math.round(p.z/4)*4);light.target.position.copy(shadowAnchor);light.target.updateMatrixWorld();light.position.set(shadowAnchor.x+Math.cos(angle)*100,Math.max(12,Math.sin(angle)*100),shadowAnchor.z+35);light.castShadow=e.daylight>.35&&cloud.current<.85;}
  const status=clockLabel(now)+' · '+now.toLocaleDateString('vi-VN')+' · '+weatherLabel(weather.current,failed.current,now.getTime());if(status!==last.current){last.current=status;onStatus(status)}
- if(rain.current){rain.current.visible=wet.current>0.02;rain.current.position.set(p.x,0,p.z);const mat=rain.current.material as THREE.LineBasicMaterial;mat.opacity=wet.current*0.55;if(rain.current.visible){const attr=geometry.getAttribute('position');drops.forEach((d,i)=>{d.y-=dt*15;if(d.y<0){d.y+=18;d.x=Math.random()*40-20;d.z=Math.random()*40-20}attr.setXYZ(i*2,d.x,d.y,d.z);attr.setXYZ(i*2+1,d.x+0.12,d.y+0.65,d.z)});geometry.setDrawRange(0,Math.ceil(RAIN*wet.current)*2);attr.needsUpdate=true}}
+ if(rain.current){rain.current.visible=wet.current>0.02;rain.current.position.set(p.x,0,p.z);const mat=rain.current.material as THREE.LineBasicMaterial;mat.opacity=wet.current*.65;if(rain.current.visible){const attr=geometry.getAttribute('position');drops.forEach((d,i)=>{d.y-=dt*(14+wet.current*9);d.x+=weatherVisual.windX*dt;d.z+=weatherVisual.windZ*dt;if(Math.abs(d.x)>20)d.x-=Math.sign(d.x)*40;if(Math.abs(d.z)>20)d.z-=Math.sign(d.z)*40;if(d.y<0){d.y+=18;d.x=Math.random()*40-20;d.z=Math.random()*40-20}attr.setXYZ(i*2,d.x,d.y,d.z);attr.setXYZ(i*2+1,d.x-weatherVisual.windX*.045,d.y+.45+wet.current*.45,d.z-weatherVisual.windZ*.045)});geometry.setDrawRange(0,Math.ceil(RAIN*wet.current)*2);attr.needsUpdate=true}}
  if(lamps.current){lamps.current.visible=true;if(elapsed.current-lastScan.current>0.7){lastScan.current=elapsed.current;const near=locations.filter(q=>Math.hypot(q.x-p.x,q.z-p.z)<100).sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z)).slice(0,LAMPS);lampColliders.current=near.map(q=>({...q,radius:0.12,kind:'lamp'}));for(let i=0;i<LAMPS;i++){const q=near[i];dummy.position.set(q?.x??0,q?3:-100,q?.z??0);dummy.scale.setScalar(q?1:0);dummy.updateMatrix();poles.current?.setMatrixAt(i,dummy.matrix);dummy.position.set(q?.x??0,q?6:-100,q?.z??0);dummy.scale.setScalar(q?1:0);dummy.updateMatrix();lamps.current.setMatrixAt(i,dummy.matrix);if(i<3&&lights.current[i]){lights.current[i]!.position.set(q?.x??0,q?5.5:-100,q?.z??0)}}lamps.current.instanceMatrix.needsUpdate=true;if(poles.current)poles.current.instanceMatrix.needsUpdate=true}}
  const lampPower=THREE.MathUtils.clamp((.65-e.daylight)/.5,0,1);for(const l of lights.current)if(l)l.intensity=lampPower*32;if(lampMaterial.current)lampMaterial.current.emissiveIntensity=lampPower*2.2;
  });
