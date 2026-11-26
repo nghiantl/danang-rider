@@ -1,4 +1,4 @@
-import {environmentAt} from './environment';
+import {environmentAt,weatherVisual} from './environment';
 import {FaceDetails,ShirtDetails} from './characterVisuals';
 import {CargoModel,type CargoKind,type DeliveryAction} from './DeliveryScene';
 import {memo,useRef} from 'react';
@@ -23,9 +23,9 @@ function Wheel({spin}:{spin:React.RefObject<THREE.Group|null>}){
  {[0,1,2,3,4].map(i=><group key={i} rotation={[i*Math.PI/5,0,0]}><Body at={[0.055,0,0]} size={[0.025,0.43,0.035]} color="#454d55" metal={0.5}/></group>)}<mesh rotation={[0,0,Math.PI/2]}><cylinderGeometry args={[0.095,0.095,0.13,12]}/><meshStandardMaterial color="#626c74" metalness={0.6}/></mesh></group>;
 }
 export const RiderModel=memo(function RiderModel({cargo=[],vehicle,gender,motion,action,dismounted=false,firstPerson=false,customPaint,boxPaint}:{cargo?:CargoKind[];customPaint?:string;boxPaint?:string;firstPerson?:boolean;dismounted?:boolean;action:React.RefObject<DeliveryAction|null>;vehicle:'petrol'|'electric';gender:'male'|'female';motion:React.RefObject<Motion>}){
- const beam=useRef<THREE.ShaderMaterial>(null);const lean=useRef<THREE.Group>(null),front=useRef<THREE.Group>(null),fw=useRef<THREE.Group>(null),rw=useRef<THREE.Group>(null),lamp=useRef<THREE.MeshStandardMaterial>(null),headlight=useRef<THREE.SpotLight>(null),aim=useRef<THREE.Object3D>(null),brakeGlow=useRef<THREE.Mesh>(null);
+ const spray=useRef<THREE.Points>(null);const beam=useRef<THREE.ShaderMaterial>(null);const lean=useRef<THREE.Group>(null),front=useRef<THREE.Group>(null),fw=useRef<THREE.Group>(null),rw=useRef<THREE.Group>(null),lamp=useRef<THREE.MeshStandardMaterial>(null),headlight=useRef<THREE.SpotLight>(null),aim=useRef<THREE.Object3D>(null),brakeGlow=useRef<THREE.Mesh>(null);
  const indicators=useRef<(THREE.MeshStandardMaterial|null)[]>([]);const lid=useRef<THREE.Group>(null);const last=useRef(0);const seated=useRef<THREE.Group>(null);const upper=useRef<THREE.Group>(null);const previousSpeed=useRef(0);
- useFrame((_,dt)=>{const m=motion.current;if(!m)return;const a=action.current,t=a?.elapsed??0;const open=!!a&&(a.kind==='pickup'?t>4.2&&t<5.5:t<1.25);if(lid.current)lid.current.rotation.x=THREE.MathUtils.damp(lid.current.rotation.x,open?-1.65:0,12,dt);if(seated.current)seated.current.visible=!action.current&&!dismounted;const accel=dt>0?THREE.MathUtils.clamp((Math.abs(m.speed)-previousSpeed.current)/dt,-8,8):0;previousSpeed.current=Math.abs(m.speed);if(upper.current){upper.current.rotation.x=THREE.MathUtils.damp(upper.current.rotation.x,m.brake?-.10:accel*.009,8,dt);upper.current.rotation.z=THREE.MathUtils.damp(upper.current.rotation.z,m.steer*.055,8,dt)}const step=m.distance-last.current;last.current=m.distance;
+ useFrame((_,dt)=>{const m=motion.current;if(!m)return;const a=action.current,t=a?.elapsed??0;const open=!!a&&(a.kind==='pickup'?t>4.2&&t<5.5:t<1.25);if(lid.current)lid.current.rotation.x=THREE.MathUtils.damp(lid.current.rotation.x,open?-1.65:0,12,dt);if(seated.current)seated.current.visible=!action.current&&!dismounted;const accel=dt>0?THREE.MathUtils.clamp((Math.abs(m.speed)-previousSpeed.current)/dt,-8,8):0;previousSpeed.current=Math.abs(m.speed);if(upper.current){upper.current.rotation.x=THREE.MathUtils.damp(upper.current.rotation.x,m.brake?-.10:accel*.009,8,dt);upper.current.rotation.z=THREE.MathUtils.damp(upper.current.rotation.z,m.steer*.055,8,dt)}if(spray.current){const power=weatherVisual.wetness*Math.min(1,Math.abs(m.speed)/8);spray.current.visible=power>.04;const mat=spray.current.material as THREE.PointsMaterial;mat.opacity=power*.65;const a=spray.current.geometry.getAttribute('position');if(spray.current.visible){for(let i=0;i<32;i++){const t=(performance.now()*.002+i/32)%1,side=i%2?1:-1;a.setXYZ(i,side*(.12+t*.55),.12+Math.sin(t*Math.PI)*.45,.65+t*1.2)}a.needsUpdate=true}}const step=m.distance-last.current;last.current=m.distance;
  if(lean.current)lean.current.rotation.z=THREE.MathUtils.damp(lean.current.rotation.z,m.steer*Math.min(Math.abs(m.speed)/8,1)*0.23,8,dt);
  if(front.current)front.current.rotation.y=THREE.MathUtils.damp(front.current.rotation.y,m.steer*0.24,10,dt);
  for(const w of [fw.current,rw.current])if(w)w.rotation.x-=step/0.325;
@@ -35,6 +35,7 @@ export const RiderModel=memo(function RiderModel({cargo=[],vehicle,gender,motion
  });
  const electric=vehicle==='electric',paint=customPaint??(electric?'#36b6a7':'#d94b39'),shirt=gender==='female'?'#e58ca5':'#3676b7',skin='#d9a77f',pants='#26364a';
  return <group>
+ <points ref={spray} visible={false} frustumCulled={false}><bufferGeometry><bufferAttribute attach="attributes-position" args={[new Float32Array(96),3]}/></bufferGeometry><pointsMaterial color="#b8d5e3" size={.055} transparent opacity={0} depthWrite={false}/></points>
  <mesh position={[0,0.115,-6.3]} rotation={[-Math.PI/2,0,0]} renderOrder={2}>
  <planeGeometry args={[5.4,11]}/><shaderMaterial ref={beam} transparent depthWrite={false} blending={THREE.AdditiveBlending} toneMapped={false} uniforms={{tint:{value:new THREE.Color('#fff0bd')},strength:{value:0.48}}} vertexShader={glowVertex} fragmentShader={glowFragment}/>
  </mesh>
