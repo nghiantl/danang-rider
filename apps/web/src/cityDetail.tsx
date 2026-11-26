@@ -3,12 +3,15 @@ import * as THREE from 'three';
 import {nearby,CHUNK_SIZE,type Chunk} from './world';
 import {treePosition} from './environmentCollision';
 import {RoadSurface,useRoadTextures,type Surface} from './roadVisuals';
+import {facade} from './buildingVisuals';
+import {useFrame} from '@react-three/fiber';
+import {environmentAt} from './environment';
 import type {Footprint} from './osm';
 type Box={x:number;y:number;z:number;w:number;h:number;d:number;a?:number;color:string};
-function Batch({items}:{items:Box[]}){
- const ref=useRef<THREE.InstancedMesh>(null);
+function Batch({items,glass=false}:{items:Box[];glass?:boolean}){
+ const ref=useRef<THREE.InstancedMesh>(null);const material=useRef<THREE.MeshStandardMaterial>(null);const last=useRef(-1);useFrame(()=>{if(!glass||!material.current)return;const n=environmentAt(new Date()).night?0.35:0;if(n!==last.current){last.current=n;material.current.emissiveIntensity=n}});
  useLayoutEffect(()=>{const mesh=ref.current;if(!mesh)return;const o=new THREE.Object3D();items.forEach((b,i)=>{o.position.set(b.x,b.y,b.z);o.rotation.set(0,b.a||0,0);o.scale.set(b.w,b.h,b.d);o.updateMatrix();mesh.setMatrixAt(i,o.matrix);mesh.setColorAt(i,new THREE.Color(b.color))});mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere()},[items]);
- return items.length?<instancedMesh ref={ref} args={[undefined,undefined,items.length]}><boxGeometry/><meshStandardMaterial roughness={0.85}/></instancedMesh>:null;
+ return items.length?<instancedMesh ref={ref} args={[undefined,undefined,items.length]}><boxGeometry/><meshStandardMaterial ref={material} roughness={glass?.32:.85} metalness={glass?.15:0} emissive={glass?'#b99a60':'#000000'} emissiveIntensity={0}/></instancedMesh>:null;
 }
 function House({b,index}:{b:Footprint;index:number}){
  const shape=useMemo(()=>{const s=new THREE.Shape();const p=b.outline;if(p&&p.length>=3){s.moveTo(p[0].x-b.x,-(p[0].z-b.z));p.slice(1).forEach(v=>s.lineTo(v.x-b.x,-(v.z-b.z)))}else{s.moveTo(-b.halfX,-b.halfZ);s.lineTo(b.halfX,-b.halfZ);s.lineTo(b.halfX,b.halfZ);s.lineTo(-b.halfX,b.halfZ)}s.closePath();return s},[b]);
@@ -17,7 +20,7 @@ function House({b,index}:{b:Footprint;index:number}){
 }
 const ChunkDetail=React.memo(function ChunkDetail({chunk,context,textures}:{chunk:Chunk;context:Chunk[];textures:ReturnType<typeof useRoadTextures>}){
  const items=useMemo(()=>{
- const boxes:Box[]=[];const asphalt:Surface[]=[],paving:Surface[]=[];const segments=context.flatMap(c=>c.segments);const buildings=context.flatMap(c=>c.buildings);
+ const boxes:Box[]=[];const windows:Box[]=[];const asphalt:Surface[]=[],paving:Surface[]=[];const segments=context.flatMap(c=>c.segments);const buildings=context.flatMap(c=>c.buildings);
  for(const p of chunk.segments){
  const a=-p.angle, ux=Math.cos(p.angle),uz=Math.sin(p.angle),nx=-uz,nz=ux;
  const add=(along:number,side:number,y:number,w:number,h:number,d:number,color:string)=>boxes.push({x:p.x+ux*along+nx*side,z:p.z+uz*along+nz*side,y,w,h,d,a,color});
@@ -35,10 +38,10 @@ const ChunkDetail=React.memo(function ChunkDetail({chunk,context,textures}:{chun
  if(treePosition(p,context)){add(5,p.width/2+2,1.5,0.35,3,0.35,'#775d43');add(5,p.width/2+2,4,2.6,2.8,2.6,'#56865a')}
  }
  }
- for(const {b,index} of chunk.buildings){const pts=b.outline;if(!pts||pts.length<3)continue;for(let i=0;i<pts.length;i++){const p=pts[i],q=pts[(i+1)%pts.length],dx=q.x-p.x,dz=q.z-p.z,len=Math.hypot(dx,dz);if(len<3)continue;const a=-Math.atan2(dz,dx);for(let y=2.2;y<b.height-0.6;y+=3.3){boxes.push({x:(p.x+q.x)/2,z:(p.z+q.z)/2,y,w:len*0.65,h:1.25,d:0.12,a,color:'#557789'})}if(index%4===0)boxes.push({x:(p.x+q.x)/2,z:(p.z+q.z)/2,y:2.9,w:len*0.8,h:0.25,d:1.2,a,color:['#b65b48','#458779','#c79a45'][index%3]})}}
- return {boxes,asphalt,paving};
+ for(const {b,index} of chunk.buildings){const f=facade(b,index,segments.filter(p=>Math.hypot(p.x-b.x,p.z-b.z)<100+p.length/2));boxes.push(...f.boxes);windows.push(...f.windows)}
+ return {boxes,windows,asphalt,paving};
  },[chunk,context]);
- return <group>{chunk.buildings.map(({b,index})=><House key={index} b={b} index={index}/>)}<RoadSurface items={items.asphalt} texture={textures.asphalt}/><RoadSurface items={items.paving} texture={textures.paving} tile={1.6}/><Batch items={items.boxes}/></group>;
+ return <group>{chunk.buildings.map(({b,index})=><House key={index} b={b} index={index}/>)}<RoadSurface items={items.asphalt} texture={textures.asphalt}/><RoadSurface items={items.paving} texture={textures.paving} tile={1.6}/><Batch items={items.boxes}/><Batch items={items.windows} glass/></group>;
 });
 
 // Stable context and keys keep overlapping chunks mounted across cell transitions.
