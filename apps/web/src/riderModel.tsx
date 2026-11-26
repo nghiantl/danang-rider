@@ -1,3 +1,4 @@
+import {FaceDetails,ShirtDetails} from './characterVisuals';
 import {CargoModel,type CargoKind,type DeliveryAction} from './DeliveryScene';
 import {memo,useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
@@ -62,11 +63,11 @@ export const RiderModel=memo(function RiderModel({cargo=[],vehicle,gender,motion
  {[-1,1].map(side=><group key={side}><Limb a={[side*0.27,1.15,-0.48]} b={[side*0.39,1.42,-0.48]} r={0.022} color="#555e65"/><Body at={[side*.39,1.43,-.48]} size={[.19,.12,.05]} color="#222b32" round/><Body at={[side*.39,1.43,-.452]} size={[.16,.09,.018]} color="#a9c7d2" round metal={.7}/><Body at={[side*.32,1.16,-.48]} size={[.13,.075,.075]} color="#24292d" round/><Body at={[side*.31,1.145,-.55]} size={[.13,.025,.035]} color="#b7c0c6" metal={.6}/>
  </group>)}
  <group ref={seated}>{[-1,1].map(side=><group key={side}><Limb a={[side*0.14,1.03,0.24]} b={[side*0.22,0.78,-0.12]} r={0.105} color={pants}/><Limb a={[side*0.22,0.78,-0.12]} b={[side*0.18,0.51,-0.12]} r={0.085} color={pants}/><Body at={[side*0.18,0.51,-0.2]} size={[0.17,0.12,0.29]} color="#20272d" round/>
- <Limb a={[side*0.19,1.48,0.12]} b={[side*0.28,1.28,-0.17]} r={0.075} color={shirt}/><Limb a={[side*0.28,1.28,-0.17]} b={[side*0.32,1.16,-0.48]} r={0.055} color={skin}/><Body at={[side*0.32,1.16,-0.48]} size={[0.12,0.12,0.12]} color={skin} round/></group>)}
- <Body at={[0,1.31,0.18]} size={[gender==='female'?0.39:0.46,0.57,0.32]} color={shirt} round/>
+ <Limb a={[side*0.19,1.48,0.12]} b={[side*0.28,1.28,-0.17]} r={0.075} color={shirt}/><Limb a={[side*0.28,1.28,-0.17]} b={[side*0.32,1.16,-0.48]} r={0.055} color={skin}/><Body at={[side*0.32,1.16,-0.48]} size={[0.12,0.095,0.12]} color={skin} round/><Body at={[side*.28,1.13,-.51]} size={[.045,.055,.07]} color={skin} round/></group>)}
+ <group position={[0,1.31,.18]}><ShirtDetails color={gender==='female'?'#a95776':'#244d78'}/></group><Body at={[0,1.31,0.18]} size={[gender==='female'?0.39:0.46,0.57,0.32]} color={shirt} round/>
  {!firstPerson&&<>
  <Body at={[0,1.65,0.08]} size={[0.14,0.19,0.14]} color={skin} round/>
- <Body at={[0,1.79,0.06]} size={[0.29,0.34,0.29]} color={skin} round/>
+ <Body at={[0,1.79,0.06]} size={[0.29,0.34,0.29]} color={skin} round/><group position={[0,1.77,.06]}><FaceDetails skin={skin} helmet/></group>
  <Body at={[0,1.88,0.08]} size={[0.35,0.29,0.36]} color="#263746" round/>
  <Body at={[0,1.86,-0.085]} size={[0.29,0.12,0.09]} color="#7797a8" round/>
  {gender==='female'&&<Body at={[0,1.65,0.24]} size={[0.13,0.31,0.13]} color="#332720" round/>}
