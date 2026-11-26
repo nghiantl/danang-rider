@@ -23,8 +23,8 @@ function Wheel({spin}:{spin:React.RefObject<THREE.Group|null>}){
 }
 export const RiderModel=memo(function RiderModel({cargo=[],vehicle,gender,motion,action,dismounted=false,firstPerson=false,customPaint,boxPaint}:{cargo?:CargoKind[];customPaint?:string;boxPaint?:string;firstPerson?:boolean;dismounted?:boolean;action:React.RefObject<DeliveryAction|null>;vehicle:'petrol'|'electric';gender:'male'|'female';motion:React.RefObject<Motion>}){
  const lean=useRef<THREE.Group>(null),front=useRef<THREE.Group>(null),fw=useRef<THREE.Group>(null),rw=useRef<THREE.Group>(null),lamp=useRef<THREE.MeshStandardMaterial>(null),headlight=useRef<THREE.SpotLight>(null),aim=useRef<THREE.Object3D>(null),brakeGlow=useRef<THREE.Mesh>(null);
- const indicators=useRef<(THREE.MeshStandardMaterial|null)[]>([]);const lid=useRef<THREE.Group>(null);const last=useRef(0);const seated=useRef<THREE.Group>(null);
- useFrame((_,dt)=>{const m=motion.current;if(!m)return;const a=action.current,t=a?.elapsed??0;const open=!!a&&(a.kind==='pickup'?t>4.2&&t<5.5:t<1.25);if(lid.current)lid.current.rotation.x=THREE.MathUtils.damp(lid.current.rotation.x,open?-1.65:0,12,dt);if(seated.current)seated.current.visible=!action.current&&!dismounted;const step=m.distance-last.current;last.current=m.distance;
+ const indicators=useRef<(THREE.MeshStandardMaterial|null)[]>([]);const lid=useRef<THREE.Group>(null);const last=useRef(0);const seated=useRef<THREE.Group>(null);const upper=useRef<THREE.Group>(null);const previousSpeed=useRef(0);
+ useFrame((_,dt)=>{const m=motion.current;if(!m)return;const a=action.current,t=a?.elapsed??0;const open=!!a&&(a.kind==='pickup'?t>4.2&&t<5.5:t<1.25);if(lid.current)lid.current.rotation.x=THREE.MathUtils.damp(lid.current.rotation.x,open?-1.65:0,12,dt);if(seated.current)seated.current.visible=!action.current&&!dismounted;const accel=dt>0?THREE.MathUtils.clamp((Math.abs(m.speed)-previousSpeed.current)/dt,-8,8):0;previousSpeed.current=Math.abs(m.speed);if(upper.current){upper.current.rotation.x=THREE.MathUtils.damp(upper.current.rotation.x,m.brake?-.10:accel*.009,8,dt);upper.current.rotation.z=THREE.MathUtils.damp(upper.current.rotation.z,m.steer*.055,8,dt)}const step=m.distance-last.current;last.current=m.distance;
  if(lean.current)lean.current.rotation.z=THREE.MathUtils.damp(lean.current.rotation.z,m.steer*Math.min(Math.abs(m.speed)/8,1)*0.23,8,dt);
  if(front.current)front.current.rotation.y=THREE.MathUtils.damp(front.current.rotation.y,m.steer*0.24,10,dt);
  for(const w of [fw.current,rw.current])if(w)w.rotation.x-=step/0.325;
@@ -64,7 +64,7 @@ export const RiderModel=memo(function RiderModel({cargo=[],vehicle,gender,motion
  </group>)}
  <group ref={seated}>{[-1,1].map(side=><group key={side}><Limb a={[side*0.14,1.03,0.24]} b={[side*0.22,0.78,-0.12]} r={0.105} color={pants}/><Limb a={[side*0.22,0.78,-0.12]} b={[side*0.18,0.51,-0.12]} r={0.085} color={pants}/><Body at={[side*0.18,0.51,-0.2]} size={[0.17,0.12,0.29]} color="#20272d" round/>
  <Limb a={[side*0.19,1.48,0.12]} b={[side*0.28,1.28,-0.17]} r={0.075} color={shirt}/><Limb a={[side*0.28,1.28,-0.17]} b={[side*0.32,1.16,-0.48]} r={0.055} color={skin}/><Body at={[side*0.32,1.16,-0.48]} size={[0.12,0.095,0.12]} color={skin} round/><Body at={[side*.28,1.13,-.51]} size={[.045,.055,.07]} color={skin} round/></group>)}
- <group position={[0,1.31,.18]}><ShirtDetails color={gender==='female'?'#a95776':'#244d78'}/></group><Body at={[0,1.31,0.18]} size={[gender==='female'?0.39:0.46,0.57,0.32]} color={shirt} round/>
+ <group position={[0,1.03,.24]} ref={upper}><group position={[0,-1.03,-.24]}><group position={[0,1.31,.18]}><ShirtDetails color={gender==='female'?'#a95776':'#244d78'}/></group><Body at={[0,1.31,0.18]} size={[gender==='female'?0.39:0.46,0.57,0.32]} color={shirt} round/>
  {!firstPerson&&<>
  <Body at={[0,1.65,0.08]} size={[0.14,0.19,0.14]} color={skin} round/>
  <Body at={[0,1.79,0.06]} size={[0.29,0.34,0.29]} color={skin} round/><group position={[0,1.77,.06]}><FaceDetails skin={skin} helmet/></group>
@@ -72,7 +72,7 @@ export const RiderModel=memo(function RiderModel({cargo=[],vehicle,gender,motion
  <Body at={[0,1.86,-0.085]} size={[0.29,0.12,0.09]} color="#7797a8" round/>
  {gender==='female'&&<Body at={[0,1.65,0.24]} size={[0.13,0.31,0.13]} color="#332720" round/>}
  </>}
- </group>
+ </group></group></group>
  <Body at={[0,0.99,0.85]} size={[0.54,0.055,0.48]} color="#303a43" metal={0.4}/>
  <Body at={[0,1.04,.85]} size={[.49,.055,.42]} color={boxPaint??"#e7b84b"}/>{[-1,1].map(side=><group key={side}><Body at={[side*.23,1.24,.85]} size={[.035,.38,.42]} color={boxPaint??"#e7b84b"}/><Body at={[0,1.24,.85+side*.195]} size={[.49,.38,.035]} color={boxPaint??"#e7b84b"}/></group>)}{cargo.map((kind,i)=><group key={i} position={[cargo.length===1?0:(i-.5)*.22,1.19,.85]} scale={[.65,.65,.65]}><CargoModel kind={kind}/></group>)}<group ref={lid} position={[0,1.46,.63]}><Body at={[0,0,.22]} size={[.52,.055,.45]} color={boxPaint??"#f4ce68"}/></group>
  <Body at={[0,1.36,1.066]} size={[0.48,0.035,0.012]} color="#65502c"/>
