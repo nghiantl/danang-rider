@@ -55,14 +55,14 @@ export function Pedestrians({map,player,world,crossingPeople,people,hits}:{peopl
  if(moving&&!clear(q.x,q.z)){Object.assign(w,old);w.direction*=-1;q=walkerPose(w,path);moving=false}
  if(path.crossing&&w.t>0.01&&w.t<path.length-0.01)crossing.push({x:q.x,z:q.z});
  let fall=falls.current.get(i);let x=q.x,z=q.z,y=0.11,h=q.heading,tilt=0;if(fall){fall.age+=dt;const f=fallPose(fall.age,fall.hit.speed);const ox=fall.x+fall.hit.dx*f.offset,oz=fall.z+fall.hit.dz*f.offset;if(clear(ox,oz)){x=ox;z=oz}y+=f.lift;h=Math.atan2(fall.hit.dx,fall.hit.dz);tilt=f.tilt;if(fall.age>2.1){const k=Math.min(1,(fall.age-2.1)/0.8);x+=(q.x-x)*k;z+=(q.z-z)*k}if(f.done)falls.current.delete(i);if(path.crossing)crossing.push({x,z});}else colliders.push({id:i,x,z});root.position.set(x,y,z);root.rotation.set(tilt,h,0,'YXZ');root.updateMatrix();
- const scale=0.88+(i%5)*0.045,swing=moving?Math.sin(w.phase)*0.55:0;
- place(torso.current,i,0,1.16*scale,0,0,(i%3===0?.36:.43)*scale,0.58*scale,0.25*scale);
- place(head.current,i,0,1.65*scale,0,0,0.27*scale,0.32*scale,0.27*scale);
- place(hair.current,i,0,1.78*scale,-0.025*scale,0,0.28*scale,(i%3===0?.25:.16)*scale,0.28*scale);
- place(accessories.current,i,0,1.15*scale,-.18*scale,0,i%3===0?.30*scale:0,i%3===0?.38*scale:0,i%3===0?.16*scale:0);for(let j=0;j<2;j++){const side=j?1:-1;place(shoes.current,i*2+j,side*0.12*scale,0.10*scale,Math.sin(swing*side)*0.32*scale+0.035,0,0.16*scale,0.13*scale,0.28*scale);place(hands.current,i*2+j,side*0.27*scale,0.87*scale,Math.sin(swing*side)*0.22*scale,0,0.12*scale,0.16*scale,0.12*scale)}
+ const scale=0.88+(i%5)*0.045,swing=moving?Math.sin(w.phase)*0.55:0,bob=moving?Math.abs(Math.sin(w.phase))*.035*scale:0;
+ place(torso.current,i,0,1.16*scale+bob,0,0,(i%3===0?.36:.43)*scale,0.58*scale,0.25*scale);
+ place(head.current,i,0,1.65*scale+bob,0,0,0.27*scale,0.32*scale,0.27*scale);
+ place(hair.current,i,0,1.78*scale+bob,-0.025*scale,0,0.28*scale,(i%3===0?.25:.16)*scale,0.28*scale);
+ place(accessories.current,i,0,1.15*scale+bob,-.18*scale,0,i%3===0?.30*scale:0,i%3===0?.38*scale:0,i%3===0?.16*scale:0);for(let j=0;j<2;j++){const side=j?1:-1;place(shoes.current,i*2+j,side*0.12*scale,0.10*scale+Math.max(0,-swing*side)*.12*scale,Math.sin(swing*side)*0.32*scale+0.035,0,0.16*scale,0.13*scale,0.28*scale);place(hands.current,i*2+j,side*0.27*scale,0.87*scale+bob,-Math.sin(swing*side)*0.22*scale,0,0.12*scale,0.16*scale,0.12*scale)}
  for(let j=0;j<4;j++){
  const arm=j>=2,side=j%2?1:-1,x=side*(arm?0.27:0.12)*scale;
- place(limbs.current,i*4+j,x,(arm?1.12:0.46)*scale,0,0,0.13*scale,(arm?0.48:0.69)*scale,0.15*scale,swing*side*(arm?-1:1));
+ place(limbs.current,i*4+j,x,(arm?1.12:0.46)*scale+(arm?bob:0),0,0,0.13*scale,(arm?0.48:0.69)*scale,0.15*scale,swing*side*(arm?-1:1));
  }
  }
  crossingPeople.current=crossing;people.current=colliders;
