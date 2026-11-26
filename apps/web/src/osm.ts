@@ -66,7 +66,8 @@ export const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter'
 ];
 export async function loadBundledDaNangMap(signal?: AbortSignal): Promise<OSMMap> {
-  try{const prepared=await fetch(import.meta.env.BASE_URL+'data/danang-prepared-v1.json',{signal,cache:'default'});if(prepared.ok){const map=await prepared.json() as OSMMap;if(map.roads?.length&&Array.isArray(map.buildings)&&map.spawn&&map.pickup&&map.delivery&&Number.isFinite(map.extent))return map}}catch(error){if(signal?.aborted)throw error}
+  const cached=await readPreparedCache();if(signal?.aborted)throw new Error('OSM request cancelled');if(cached)return cached;
+  try{const prepared=await fetch(import.meta.env.BASE_URL+'data/danang-prepared-v1.json',{signal,cache:'default'});if(prepared.ok){const map=await prepared.json() as OSMMap;if(map.roads?.length&&Array.isArray(map.buildings)&&map.spawn&&map.pickup&&map.delivery&&Number.isFinite(map.extent)){void writePreparedCache(map);return map}}}catch(error){if(signal?.aborted)throw error}
   // The file is generated from real OSM data by scripts/update-osm.mjs.
   // Never treat an empty or missing snapshot as a valid city.
   const response=await fetch(import.meta.env.BASE_URL+'data/danang-osm.json',{signal,cache:'default'});
@@ -107,3 +108,8 @@ export async function loadDaNangMap(signal?: AbortSignal): Promise<OSMMap> {
   }
   throw new Error('Không tải được OSM: '+errors.join(' | '));
 }
+
+const MAP_CACHE_KEY='prepared-v1-'+(import.meta.env?.VITE_VERCEL_GIT_COMMIT_SHA||'local');
+function mapDB():Promise<IDBDatabase>{return new Promise((resolve,reject)=>{const req=indexedDB.open('rider-map',1);req.onupgradeneeded=()=>req.result.createObjectStore('maps');req.onsuccess=()=>resolve(req.result);req.onerror=()=>reject(req.error)})}
+async function readPreparedCache():Promise<OSMMap|null>{try{const db=await mapDB();return await new Promise(resolve=>{const tx=db.transaction('maps','readonly'),req=tx.objectStore('maps').get(MAP_CACHE_KEY);req.onsuccess=()=>{const m=req.result as OSMMap|undefined;resolve(m?.roads?.length&&Array.isArray(m.buildings)&&m.spawn&&m.pickup&&m.delivery&&Number.isFinite(m.extent)?m:null)};req.onerror=()=>resolve(null);tx.oncomplete=()=>db.close();tx.onabort=()=>{db.close();resolve(null)}})}catch{return null}}
+async function writePreparedCache(map:OSMMap){try{const db=await mapDB();const tx=db.transaction('maps','readwrite'),store=tx.objectStore('maps');store.clear();store.put(map,MAP_CACHE_KEY);tx.oncomplete=tx.onabort=()=>db.close()}catch{/* optional cache */}}
