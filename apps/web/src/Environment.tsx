@@ -16,13 +16,13 @@ export function Environment({map,player,onStatus,audioWeather,lampColliders}:{la
  const elapsed=useRef(0),last=useRef(''),wet=useRef(0),cloud=useRef(0),lastScan=useRef(-10);
  const weather=useRef<Weather|null>(null),failed=useRef(false),mist=useRef(0);
  useEffect(()=>{
-  let active=true,controller:AbortController|null=null;
+  let active=true;
   try{const cached=JSON.parse(localStorage.getItem(CACHE_KEY)||'null');if(validCache(cached))weather.current=cached}catch{/* storage unavailable */}
   const refresh=async()=>{const next=await prefetchWeather();if(active){weather.current=next;failed.current=!next||Date.now()-next.fetchedAt>REFRESH_MS}};
   if(!weather.current||Date.now()-weather.current.fetchedAt>=REFRESH_MS)void refresh();
   const timer=setInterval(refresh,REFRESH_MS);window.addEventListener('online',refresh);
   const visible=()=>{if(!document.hidden&&(!weather.current||failed.current||Date.now()-weather.current.fetchedAt>=REFRESH_MS))void refresh()};document.addEventListener('visibilitychange',visible);
-  return()=>{active=false;controller?.abort();clearInterval(timer);window.removeEventListener('online',refresh);document.removeEventListener('visibilitychange',visible)};
+  return()=>{active=false;clearInterval(timer);window.removeEventListener('online',refresh);document.removeEventListener('visibilitychange',visible)};
  },[]);
  const colors=useMemo(()=>({day:new THREE.Color('#a7d4e9'),night:new THREE.Color('#101c36'),dusk:new THREE.Color('#e7a27a'),gray:new THREE.Color('#8494a3'),sky:new THREE.Color(),sun:new THREE.Color()}),[]);
  const drops=useMemo(()=>Array.from({length:RAIN},()=>({x:Math.random()*40-20,y:Math.random()*18,z:Math.random()*40-20})),[]);
