@@ -21,7 +21,7 @@ import { loadDaNangMap, type OSMMap, type Point } from './osm';
 import { buildWorld, nearby, obstaclesNear, cell, CHUNK_SIZE, type Chunk } from './world';
 
 import { CitySigns } from './CitySigns';
-import { CityDetail } from './cityDetail';
+const CityDetail=React.lazy(()=>import('./cityDetail').then(m=>({default:m.CityDetail})));
 
 import {DeliveryScene,WaitingCustomer,DELIVERY_SECONDS,cargoKind,type CargoKind,type DeliveryAction} from './DeliveryScene';
 import {CATALOG,fleet,buyVehicle,selectVehicle,spec,starter,upgrades,tankCapacity,customize,COLORS as VEHICLE_COLORS,PARTS,upgradePrice,type Part,type Upgrades,type VehicleId} from './career/vehicleShop';
@@ -66,12 +66,12 @@ function Building({ x, z, index }: {x:number; z:number; index:number}) {
     </group>)}
   </group>;
 }
-function City({map,world,position,target,stage}:{target:Point;stage:string;map:OSMMap|null;world:Map<string,Chunk>;position:Point}) {
+function City({map,world,position,target,stage,player}:{player:React.RefObject<Point>;target:Point;stage:string;map:OSMMap|null;world:Map<string,Chunk>;position:Point}) {
   const cx=cell(position.x),cz=cell(position.z);
   const active=useMemo(()=>nearby(world,cx*CHUNK_SIZE,cz*CHUNK_SIZE),[world,cx,cz]);
   if(map)return <group>
     <mesh rotation={[-Math.PI/2,0,0]} receiveShadow><planeGeometry args={[map.extent*2+150,map.extent*2+150]}/><meshStandardMaterial color="#a0a58c"/></mesh>
-    <CityDetail world={world} chunks={active}/><CitySigns map={map} position={position}/><Landmarks map={map} position={position}/><Beach map={map} position={position}/>
+    <React.Suspense fallback={null}><CityDetail world={world} chunks={active} player={player}/></React.Suspense><CitySigns map={map} position={position}/><Landmarks map={map} position={position}/><Beach map={map} position={position}/>
     {stage!=='done'&&<Marker at={new THREE.Vector3(target.x,0,target.z)} color={stage==='pickup'?'#ffd45a':'#42e3aa'} label="ĐƠN HÀNG"/>}
   </group>;
   return <group>
@@ -189,7 +189,7 @@ function Game({cargo,feedback,xpRatio,onViolation,tuning,maxSpeed,firstPerson,or
   <ContextMonitor onLost={onLost} onRestored={onRestored}/>
   <color attach="background" args={['#a7d4e9']}/><fog attach="fog" args={['#a7d4e9',180,600]}/>
   <Environment map={map} player={player} onStatus={onStatus} audioWeather={audioWeather} lampColliders={lampColliders}/>
-  <AdaptiveResolution/><Garages items={garages} pose={repairPose}/><EnergyStations items={stations} service={servicePose} gender={gender}/><WaitingCustomer target={target} stage={stage} player={player}/><PoliceCheckpoints items={police} player={player}/><City map={map} world={world} position={position} target={target} stage={stage}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles} crossingPeople={crossingPeople} signalColliders={signalColliders}/>}{map&&<Pedestrians map={map} player={player} world={world} crossingPeople={crossingPeople} people={people} hits={hits}/>}<Rider cargo={cargo} feedback={feedback} xpRatio={xpRatio} onViolation={onViolation} tuning={tuning} maxSpeed={maxSpeed} firstPerson={firstPerson} orbit={orbit} health={health} servicePose={servicePose} energyLocked={energyLocked} spawn={spawn} action={action} target={target} onDeliveryComplete={onDeliveryComplete} vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles} people={people} hits={hits} onCollision={onCollision} lampColliders={lampColliders} signalColliders={signalColliders}/>
+  <AdaptiveResolution/><Garages items={garages} pose={repairPose}/><EnergyStations items={stations} service={servicePose} gender={gender}/><WaitingCustomer target={target} stage={stage} player={player}/><PoliceCheckpoints items={police} player={player}/><City player={player} map={map} world={world} position={position} target={target} stage={stage}/>{map&&<Traffic roads={map.roads} player={player} vehicles={vehicles} crossingPeople={crossingPeople} signalColliders={signalColliders}/>}{map&&<Pedestrians map={map} player={player} world={world} crossingPeople={crossingPeople} people={people} hits={hits}/>}<Rider cargo={cargo} feedback={feedback} xpRatio={xpRatio} onViolation={onViolation} tuning={tuning} maxSpeed={maxSpeed} firstPerson={firstPerson} orbit={orbit} health={health} servicePose={servicePose} energyLocked={energyLocked} spawn={spawn} action={action} target={target} onDeliveryComplete={onDeliveryComplete} vehicle={vehicle} gender={gender} inputs={inputs} onTick={tick} map={map} world={world} player={player} vehicles={vehicles} people={people} hits={hits} onCollision={onCollision} lampColliders={lampColliders} signalColliders={signalColliders}/>
  </Canvas><div ref={flash} aria-hidden="true" style={{position:'absolute',inset:0,pointerEvents:'none',background:'#ff6347',opacity:0,zIndex:20}}/>{contextLost&&<WebGLNotice message="WebGL context bị mất. Game đang chờ trình duyệt phục hồi; nếu không tự phục hồi, hãy tải lại."/>}</WebGLBoundary>
 }
 type Telemetry={speed:number;distance:number;x:number;z:number;heading:number;fps:number};
