@@ -1,6 +1,8 @@
 import React,{useMemo,useLayoutEffect,useRef} from 'react';
 import * as THREE from 'three';
 import {nearby,CHUNK_SIZE,type Chunk} from './world';
+import {greenPlots} from './vegetationPlacement';
+import {GroundGreenery} from './GroundGreenery';
 import {Vegetation} from './Vegetation';
 import {treePosition} from './environmentCollision';
 import {RoadSurface,useRoadTextures,type Surface} from './roadVisuals';
@@ -38,9 +40,9 @@ const ChunkDetail=React.memo(function ChunkDetail({chunk,context,textures,player
  }
  }
  for(const {b,index} of chunk.buildings){const f=facade(b,index,segments.filter(p=>Math.hypot(p.x-b.x,p.z-b.z)<100+p.length/2));boxes.push(...f.boxes);windows.push(...f.windows)}
- return {boxes,windows,asphalt,paving,trees};
+ return {boxes,windows,asphalt,paving,trees,plots:greenPlots(chunk,context)};
  },[chunk,context]);
- return <group><Houses chunk={chunk}/><Vegetation points={items.trees} player={player}/><RoadSurface items={items.asphalt} texture={textures.asphalt}/><RoadSurface items={items.paving} texture={textures.paving} tile={1.6}/><Batch items={items.boxes}/><Batch items={items.windows} glass player={player}/></group>;
+ return <group><Houses chunk={chunk}/><Vegetation points={items.trees} player={player}/><GroundGreenery points={items.plots} player={player}/><RoadSurface items={items.asphalt} texture={textures.asphalt}/><RoadSurface items={items.paving} texture={textures.paving} tile={1.6}/><Batch items={items.boxes}/><Batch items={items.windows} glass player={player}/></group>;
 });
 
 // Stable context and keys keep overlapping chunks mounted across cell transitions.
