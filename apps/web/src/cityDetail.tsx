@@ -1,3 +1,4 @@
+import {recordStartup} from './startupProfiler.ts';
 import {settings} from './GraphicsSettings';
 import React,{useMemo,useLayoutEffect,useRef,useEffect,useState} from 'react';
 import * as THREE from 'three';
@@ -19,10 +20,10 @@ function Batch({items,glass=false,detail=false,player}:{items:Box[];glass?:boole
  useLayoutEffect(()=>{const mesh=ref.current;if(!mesh)return;const o=new THREE.Object3D();items.forEach((b,i)=>{o.position.set(b.x,b.y,b.z);o.rotation.set(0,b.a||0,0);o.scale.set(b.w,b.h,b.d);o.updateMatrix();mesh.setMatrixAt(i,o.matrix);mesh.setColorAt(i,new THREE.Color(b.color))});mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere()},[items]);
  return items.length?<instancedMesh ref={ref} receiveShadow args={[undefined,undefined,items.length]}><boxGeometry/><meshStandardMaterial ref={material} roughness={glass?.32:.85} metalness={glass?.15:0} emissive={glass?'#b99a60':'#000000'} emissiveIntensity={0}/></instancedMesh>:null;
 }
-function Houses({chunk}:{chunk:Chunk}){const geometry=useMemo(()=>{const parts:THREE.BufferGeometry[]=[];for(const {b,index} of chunk.buildings){const s=new THREE.Shape();const p=b.outline;if(p&&p.length>=3){s.moveTo(p[0].x-b.x,-(p[0].z-b.z));for(const v of p.slice(1))s.lineTo(v.x-b.x,-(v.z-b.z))}else{s.moveTo(-b.halfX,-b.halfZ);s.lineTo(b.halfX,-b.halfZ);s.lineTo(b.halfX,b.halfZ);s.lineTo(-b.halfX,b.halfZ)}s.closePath();const g=new THREE.ExtrudeGeometry(s,{depth:b.height,bevelEnabled:false});g.rotateX(-Math.PI/2);g.translate(b.x,0,b.z);const color=new THREE.Color(['#e7d5b9','#d9e4df','#f0cdb6','#c6d4e4','#eee6d7','#b9c6b4'][index%6]);const arr=new Float32Array(g.attributes.position.count*3);for(let i=0;i<arr.length;i+=3){arr[i]=color.r;arr[i+1]=color.g;arr[i+2]=color.b}g.setAttribute('color',new THREE.BufferAttribute(arr,3));parts.push(g)}const merged=parts.length?mergeGeometries(parts):null;parts.forEach(g=>g.dispose());return merged},[chunk]);React.useEffect(()=>()=>geometry?.dispose(),[geometry]);return geometry?<mesh geometry={geometry} receiveShadow><meshStandardMaterial vertexColors roughness={.9}/></mesh>:null}
+function Houses({chunk}:{chunk:Chunk}){const geometry=useMemo(()=>{const started=performance.now();const parts:THREE.BufferGeometry[]=[];for(const {b,index} of chunk.buildings){const s=new THREE.Shape();const p=b.outline;if(p&&p.length>=3){s.moveTo(p[0].x-b.x,-(p[0].z-b.z));for(const v of p.slice(1))s.lineTo(v.x-b.x,-(v.z-b.z))}else{s.moveTo(-b.halfX,-b.halfZ);s.lineTo(b.halfX,-b.halfZ);s.lineTo(b.halfX,b.halfZ);s.lineTo(-b.halfX,b.halfZ)}s.closePath();const g=new THREE.ExtrudeGeometry(s,{depth:b.height,bevelEnabled:false});g.rotateX(-Math.PI/2);g.translate(b.x,0,b.z);const color=new THREE.Color(['#e7d5b9','#d9e4df','#f0cdb6','#c6d4e4','#eee6d7','#b9c6b4'][index%6]);const arr=new Float32Array(g.attributes.position.count*3);for(let i=0;i<arr.length;i+=3){arr[i]=color.r;arr[i+1]=color.g;arr[i+2]=color.b}g.setAttribute('color',new THREE.BufferAttribute(arr,3));parts.push(g)}const merged=parts.length?mergeGeometries(parts):null;parts.forEach(g=>g.dispose());recordStartup('Building geometry','cpu',started);return merged},[chunk]);React.useEffect(()=>()=>geometry?.dispose(),[geometry]);return geometry?<mesh geometry={geometry} receiveShadow><meshStandardMaterial vertexColors roughness={.9}/></mesh>:null}
 const ChunkDetail=React.memo(function ChunkDetail({chunk,context,textures,player}:{player:React.RefObject<Point>;chunk:Chunk;context:Chunk[];textures:ReturnType<typeof useRoadTextures>}){
  const items=useMemo(()=>{
- const trees:Point[]=[];const boxes:Box[]=[];const facadeBoxes:Box[]=[];const windows:Box[]=[];const asphalt:Surface[]=[],paving:Surface[]=[];const segments=context.flatMap(c=>c.segments);const buildings=context.flatMap(c=>c.buildings);
+ const started=performance.now();const trees:Point[]=[];const boxes:Box[]=[];const facadeBoxes:Box[]=[];const windows:Box[]=[];const asphalt:Surface[]=[],paving:Surface[]=[];const segments=context.flatMap(c=>c.segments);const buildings=context.flatMap(c=>c.buildings);
  for(const p of chunk.segments){
  const a=-p.angle, ux=Math.cos(p.angle),uz=Math.sin(p.angle),nx=-uz,nz=ux;
  const add=(along:number,side:number,y:number,w:number,h:number,d:number,color:string)=>boxes.push({x:p.x+ux*along+nx*side,z:p.z+uz*along+nz*side,y,w,h,d,a,color});
@@ -40,10 +41,10 @@ const ChunkDetail=React.memo(function ChunkDetail({chunk,context,textures,player
  const tree=treePosition(p,context);if(tree)trees.push(tree);
  }
  }
- const roadGrid=pointGrid(segments,100);
+ recordStartup('Road and tree placement','cpu',started);const facadeStart=performance.now();const roadGrid=pointGrid(segments,100);
  for(const {b,index} of chunk.buildings){const f=facade(b,index,roadGrid(b.x,b.z,126).filter(p=>Math.hypot(p.x-b.x,p.z-b.z)<100+p.length/2));facadeBoxes.push(...f.boxes);windows.push(...f.windows)}
  const split=(items:Box[])=>{const cells=new Map<string,Box[]>();for(const b of items){const key=Math.floor(b.x/60)+':'+Math.floor(b.z/60);const list=cells.get(key)??[];list.push(b);cells.set(key,list)}return [...cells.entries()]};
- return {boxes,facadeBoxes:split(facadeBoxes),windows:split(windows),asphalt,paving,trees,plots:greenPlots(chunk,context)};
+ recordStartup('Facade placement','cpu',facadeStart);const greenStart=performance.now();const plots=greenPlots(chunk,context);recordStartup('Green plots','cpu',greenStart);return {boxes,facadeBoxes:split(facadeBoxes),windows:split(windows),asphalt,paving,trees,plots};
  },[chunk,context]);
  return <group><Houses chunk={chunk}/><Vegetation points={items.trees} player={player}/><GroundGreenery points={items.plots} player={player}/><RoadSurface items={items.asphalt} texture={textures.asphalt}/><RoadSurface items={items.paving} texture={textures.paving} tile={1.6}/><Batch items={items.boxes}/>{items.facadeBoxes.map(([key,boxes])=><Batch key={'f'+key} items={boxes} detail player={player}/>)}{items.windows.map(([key,boxes])=><Batch key={'w'+key} items={boxes} glass player={player}/>)}</group>;
 });
