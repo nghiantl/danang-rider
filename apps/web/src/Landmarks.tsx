@@ -1,3 +1,4 @@
+import {RiverPromenade} from './RiverPromenade';
 import {RiverfrontLandmarks,DragonDetails} from './LandmarkAccuracy';
 import {ExtraLandmarks} from './ExtraLandmarks';
 import {LandmarkWater} from './LandmarkWater';
@@ -31,7 +32,7 @@ export function Landmarks({map,position}:{map:OSMMap;position:Point}){
  const water=useMemo(()=>{const cells=riverGrid(map).cells;const vertices:number[]=[];for(const p of cells){const x=p.x,z=p.z;vertices.push(x-2,.012,z-2,x-2,.012,z+2,x+2,.012,z+2,x-2,.012,z-2,x+2,.012,z+2,x+2,.012,z-2)}const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.Float32BufferAttribute(vertices,3));g.computeVertexNormals();return g},[map]);
  useEffect(()=>()=>water.dispose(),[water]);
  return <group>
- <LandmarkWater geometry={water}/><ExtraLandmarks map={map} position={position}/><RiverfrontLandmarks map={map} position={position}/>
+ <LandmarkWater geometry={water}/><RiverPromenade map={map}/><ExtraLandmarks map={map} position={position}/><RiverfrontLandmarks map={map} position={position}/>
  {bridges.filter(b=>Math.hypot(b.x-position.x,b.z-position.z)<900).map(b=><Bridge key={b.index} {...b}/>)}
  </group>
 }

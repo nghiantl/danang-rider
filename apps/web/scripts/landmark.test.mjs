@@ -6,3 +6,6 @@ test('LOD range and segment distance',()=>{assert.equal(landmarkRange(0),180);as
 
 import {riverfrontSites,riverfrontCovered,riverfrontVisible} from '../src/riverfrontSites.ts';
 test('independent riverfront sites render without named roads',()=>{assert.equal(riverfrontCovered({bounds:[108.21,16.05,108.25,16.08],roads:[]}),true);assert.equal(riverfrontCovered({bounds:[108.21,16.05,108.22,16.08],roads:[]}),false);assert.notDeepEqual(riverfrontSites[0].point,riverfrontSites[1].point);assert.equal(riverfrontVisible(riverfrontSites[0].point,riverfrontSites[1].point),true)});
+
+import {loveBridgeAnchor} from '../src/riverfrontSites.ts';
+test('love bridge starts at rendered east water edge',()=>{assert.deepEqual(loveBridgeAnchor([{x:10,z:2},{x:14,z:2},{x:18,z:2},{x:99,z:40}],{x:50,z:2}),{x:21,z:2});assert.equal(loveBridgeAnchor([],{x:50,z:2}),null)});
