@@ -13,10 +13,11 @@ export function RiverPromenade({map}:{map:OSMMap}){
  const roads=map.roads.flatMap(r=>r.points.slice(1).map((b,i)=>({a:r.points[i],b,w:r.width,bridge:r.bridge})));
  for(const [z,row] of rows)for(const side of [-1,1]){const edge=side===1?row.east:row.west;
  const x=edge+side*.35,p={x,z};
+ if(roads.some(r=>r.bridge&&distance(p,r.a,r.b)<r.w/2+8))continue;
  // Rail clearance is independent of the wider pavement clearance.
  const clear=(q:Point,pad:number)=>!roads.some(r=>distance(q,r.a,r.b)<r.w/2+pad)&&!map.buildings.some(b=>Math.abs(q.x-b.x)<b.halfX+pad&&Math.abs(q.z-b.z)<b.halfZ+pad);
  if(!clear(p,.35))continue;
- for(let i=0;i<160;i++){const q={x:edge+side*(i+.5),z};if(!clear(q,.55))break;paving.push({x:q.x,z,y:.065,w:1,h:.13,d:4});}
+ for(let i=0;i<160;i++){const q={x:edge+side*(i+.5),z};if(!clear(q,.55)||roads.some(r=>r.bridge&&distance(q,r.a,r.b)<r.w/2+4))break;paving.push({x:q.x,z,y:.065,w:1,h:.13,d:4});}
  if(side===1&&love&&Math.abs(z-love.z)<5)continue;
  rails.push({x,z,y:.8,w:.16,h:1.6,d:.16},{x,z,y:1.4,w:.16,h:.16,d:4},{x,z,y:.75,w:.12,h:.12,d:4});
  }const tiles=new Set(paving.map(p=>p.x+':'+p.z));for(const [z,row] of [...rows].sort((a,b)=>a[0]-b[0]))for(const side of [-1,1]){const x=(side===1?row.east:row.west)+side*2.5;if(benches.filter(b=>b.side===side).length>=8||benches.some(b=>b.side===side&&Math.abs(b.z-z)<65))continue;if(love&&Math.abs(z-love.z)<12)continue;if([-8,-4,0,4,8].every(d=>[0,side,side*2].every(dx=>tiles.has((x+dx)+':'+(z+d)))))benches.push({x,z,side});}return {paving,rails,benches}},[map]);
