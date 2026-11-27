@@ -1,0 +1,31 @@
+import type {OSMMap,Point} from './osm.ts';
+import {pointGrid} from './performance.ts';
+import {segmentDistance} from './landmarkPlacement.ts';
+export const shopNames=['CÀ PHÊ','MÌ QUẢNG','NƯỚC MÍA','BÁNH MÌ','QUÁN ĂN'] as const;
+export type Shop=Point&{angle:number;kind:number;covered:boolean};
+export function shopOpen(kind:number,hour:number){return kind===4?(hour>=17||hour<3):kind===1?hour>=5&&hour<14:hour>=6&&hour<22}
+const cache=new WeakMap<OSMMap,Shop[]>();
+export function streetShops(map:OSMMap):Shop[]{const existing=cache.get(map);if(existing)return existing;const shops=generateShops(map);cache.set(map,shops);return shops;}
+const colliderCache=new WeakMap<OSMMap,ReturnType<typeof makeColliderGrid>>();
+function makeColliderGrid(map:OSMMap){return pointGrid(streetShops(map).map(s=>({x:s.x,z:s.z,radius:1.25,kind:'shop' as const,shopKind:s.kind})),40)}
+export function shopColliders(map:OSMMap,hour:number,position?:Point){if(!position)return streetShops(map).map(s=>({x:s.x,z:s.z,radius:shopOpen(s.kind,hour)?1.25:.65,kind:'shop' as const}));let grid=colliderCache.get(map);if(!grid){grid=makeColliderGrid(map);colliderCache.set(map,grid)}return grid(position.x,position.z,12).map(({x,z,shopKind})=>({x,z,radius:shopOpen(shopKind,hour)?1.25:.65,kind:'shop' as const}));}
+function generateShops(map:OSMMap):Shop[]{
+ const houses=pointGrid(map.buildings,40);
+ const nearbyBuildings=pointGrid(map.buildings,80);
+ const segments=map.roads.flatMap(r=>r.points.slice(1).map((b,i)=>({a:r.points[i],b,w:r.width,bridge:r.bridge})));
+ const out:Shop[]=[];
+ for(const road of map.roads){if(road.bridge||road.width<8)continue;
+ for(let i=1;i<road.points.length;i++){const a=road.points[i-1],b=road.points[i],dx=b.x-a.x,dz=b.z-a.z,l=Math.hypot(dx,dz);if(l<24)continue;
+ for(let t=12;t<l-10;t+=28)for(const side of [-1,1]){
+ const ux=dx/l,uz=dz/l,offset=side*(road.width/2+3.3),x=a.x+ux*t-uz*offset,z=a.z+uz*t+ux*offset;
+ if(!houses(x,z,22).some(h=>{const outward=((h.x-x)*(-uz)+(h.z-z)*ux)*side;return outward>0&&Math.abs((h.x-x)*ux+(h.z-z)*uz)<h.halfX+h.halfZ+2;}))continue;
+ if((map.protectedAreas||[]).some(poly=>poly.length>=3&&x>=Math.min(...poly.map(p=>p.x))-2&&x<=Math.max(...poly.map(p=>p.x))+2&&z>=Math.min(...poly.map(p=>p.z))-2&&z<=Math.max(...poly.map(p=>p.z))+2))continue;
+ if(segments.some(s=>segmentDistance({x,z},s.a,s.b)<s.w/2+2.5))continue;
+ if(nearbyBuildings(x,z,100).some(h=>Math.abs(h.x-x)<h.halfX+1.1&&Math.abs(h.z-z)<h.halfZ+1.1))continue;
+ if(out.some(p=>Math.hypot(p.x-x,p.z-z)<8))continue;
+ if([map.spawn,map.pickup,map.delivery].some(p=>Math.hypot(p.x-x,p.z-z)<8))continue;
+ const hash=Math.abs(Math.floor(x*97+z*173));out.push({x,z,angle:Math.atan2(-uz,ux),kind:hash%5,covered:hash%3!==0});
+ if(out.length>=500)return out;
+ }}}
+ return out;
+}
