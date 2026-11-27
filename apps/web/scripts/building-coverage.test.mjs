@@ -10,6 +10,8 @@ test('named landmark buffer excludes adjacent infill',()=>{const a=fillBuildingG
 
 test('empty urban frontage can receive houses',()=>{assert.ok(fillBuildingGaps({...map,buildings:[]}).buildings.length>0)});
 
-import {shopOpen,streetShops} from '../src/streetLife.ts';
+import {shopOpen,streetShops,shopColliders} from '../src/streetLife.ts';
 test('shop opening hours',()=>{assert.equal(shopOpen(4,12),false);assert.equal(shopOpen(4,19),true);assert.equal(shopOpen(1,7),true);assert.equal(shopOpen(1,20),false)});
 test('no stalls without frontage',()=>assert.deepEqual(streetShops({...map,buildings:[]}),[]));
+
+test('street shops respect frontage, protected areas and opening hours',()=>{const m={...map,roads:[{...map.roads[0],width:12}],buildings:[{x:-15,z:18,halfX:4,halfZ:5,height:9}]};const shops=streetShops(m);assert.ok(shops.length>0);assert.deepEqual(streetShops(m),shops);assert.equal(shopColliders(m,2).length,0);assert.equal(shopColliders(m,12).length,shops.filter(s=>shopOpen(s.kind,12)).length);assert.deepEqual(streetShops({...m,protectedAreas:[[{x:-100,z:-100},{x:150,z:-100},{x:150,z:100},{x:-100,z:100}]]}),[]);});
