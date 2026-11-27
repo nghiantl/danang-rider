@@ -15,3 +15,5 @@ test('shop opening hours',()=>{assert.equal(shopOpen(4,12),false);assert.equal(s
 test('no stalls without frontage',()=>assert.deepEqual(streetShops({...map,buildings:[]}),[]));
 
 test('street shops respect frontage, protected areas and opening hours',()=>{const m={...map,roads:[{...map.roads[0],width:12}],buildings:[{x:-15,z:18,halfX:4,halfZ:5,height:9}]};const shops=streetShops(m);assert.ok(shops.length>0);assert.deepEqual(streetShops(m),shops);assert.equal(shopColliders(m,2).length,0);assert.equal(shopColliders(m,12).length,shops.filter(s=>shopOpen(s.kind,12)).length);assert.deepEqual(streetShops({...m,protectedAreas:[[{x:-100,z:-100},{x:150,z:-100},{x:150,z:100},{x:-100,z:100}]]}),[]);});
+
+test('local shop collision index matches full scan',()=>{const m={...map,roads:[{...map.roads[0],width:12}],buildings:[{x:-15,z:18,halfX:4,halfZ:5,height:9}]};for(const s of streetShops(m))for(const hour of [2,7,12,19,23]){const expected=shopColliders(m,hour).filter(p=>Math.hypot(p.x-s.x,p.z-s.z)<12);const actual=shopColliders(m,hour,s).map(({x,z,radius,kind})=>({x,z,radius,kind}));assert.deepEqual(actual,expected)}});
