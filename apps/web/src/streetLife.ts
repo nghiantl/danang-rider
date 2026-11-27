@@ -4,7 +4,10 @@ import {segmentDistance} from './landmarkPlacement.ts';
 export const shopNames=['CÀ PHÊ','MÌ QUẢNG','NƯỚC MÍA','BÁNH MÌ','QUÁN ĂN'] as const;
 export type Shop=Point&{angle:number;kind:number;covered:boolean};
 export function shopOpen(kind:number,hour:number){return kind===4?hour>=17&&hour<23:kind===1?hour>=5&&hour<14:hour>=6&&hour<22}
-export function streetShops(map:OSMMap):Shop[]{
+const cache=new WeakMap<OSMMap,Shop[]>();
+export function streetShops(map:OSMMap):Shop[]{const existing=cache.get(map);if(existing)return existing;const shops=generateShops(map);cache.set(map,shops);return shops;}
+export function shopColliders(map:OSMMap,hour:number){return streetShops(map).filter(s=>shopOpen(s.kind,hour)).map(s=>({x:s.x,z:s.z,radius:1.25,kind:'shop' as const}));}
+function generateShops(map:OSMMap):Shop[]{
  const houses=pointGrid(map.buildings,40);
  const nearbyBuildings=pointGrid(map.buildings,80);
  const segments=map.roads.flatMap(r=>r.points.slice(1).map((b,i)=>({a:r.points[i],b,w:r.width,bridge:r.bridge})));
