@@ -9,3 +9,7 @@ test('bridge and pedestrian roads are excluded',()=>{for(const road of [{...map.
 test('named landmark buffer excludes adjacent infill',()=>{const a=fillBuildingGaps({...map,buildings:[{...original[0],name:'Chợ Hàn'},...original.slice(1)]});assert.ok(a.buildings.slice(3).every(b=>Math.hypot(b.x,b.z-30)>=Math.hypot(3,3)+20+Math.hypot(b.halfX,b.halfZ)))});
 
 test('empty urban frontage can receive houses',()=>{assert.ok(fillBuildingGaps({...map,buildings:[]}).buildings.length>0)});
+
+import {shopOpen,streetShops} from '../src/streetLife.ts';
+test('shop opening hours',()=>{assert.equal(shopOpen(4,12),false);assert.equal(shopOpen(4,19),true);assert.equal(shopOpen(1,7),true);assert.equal(shopOpen(1,20),false)});
+test('no stalls without frontage',()=>assert.deepEqual(streetShops({...map,buildings:[]}),[]));
