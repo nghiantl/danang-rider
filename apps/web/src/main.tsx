@@ -1,3 +1,4 @@
+import {StreetLife} from './StreetLife';
 import {sidewalkTarget} from './sidewalkDelivery';
 import {GraphicsSettings,settings} from './GraphicsSettings';
 import {graphics,budgets,nextQuality} from './performance';
@@ -10,8 +11,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 06.10.1 · BUILDING COVERAGE';
-const RELEASE_VERSION = '6.10.1';
+const SPRINT_LABEL = 'SPRINT 06.10.2 · URBAN DENSITY & STREET LIFE';
+const RELEASE_VERSION = '6.10.2';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
 import {coastalPalms} from './vegetationPlacement';
@@ -74,7 +75,7 @@ function City({map,world,position,target,stage,player}:{player:React.RefObject<P
   const active=useMemo(()=>nearby(world,cx*CHUNK_SIZE,cz*CHUNK_SIZE),[world,cx,cz]);
   if(map)return <group>
     <mesh rotation={[-Math.PI/2,0,0]} receiveShadow><planeGeometry args={[map.extent*2+150,map.extent*2+150]}/><meshStandardMaterial color="#a0a58c"/></mesh>
-    <React.Suspense fallback={null}><CityDetail world={world} chunks={active} player={player}/></React.Suspense><CitySigns map={map} position={position}/><Landmarks map={map} position={position}/><Beach map={map} position={position} player={player}/>
+    <React.Suspense fallback={null}><CityDetail world={world} chunks={active} player={player}/></React.Suspense><StreetLife map={map} position={position}/><CitySigns map={map} position={position}/><Landmarks map={map} position={position}/><Beach map={map} position={position} player={player}/>
     {stage!=='done'&&<Marker at={new THREE.Vector3(target.x,0,target.z)} color={stage==='pickup'?'#ffd45a':'#42e3aa'} label="ĐƠN HÀNG"/>}
   </group>;
   return <group>
