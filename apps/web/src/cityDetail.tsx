@@ -1,6 +1,9 @@
 import React,{useMemo,useLayoutEffect,useRef} from 'react';
 import * as THREE from 'three';
 import {nearby,CHUNK_SIZE,type Chunk} from './world';
+import {greenPlots} from './vegetationPlacement';
+import {GroundGreenery} from './GroundGreenery';
+import {Vegetation} from './Vegetation';
 import {treePosition} from './environmentCollision';
 import {RoadSurface,useRoadTextures,type Surface} from './roadVisuals';
 import {facade} from './buildingVisuals';
@@ -18,7 +21,7 @@ function Batch({items,glass=false,player}:{items:Box[];glass?:boolean;player?:Re
 function Houses({chunk}:{chunk:Chunk}){const geometry=useMemo(()=>{const parts:THREE.BufferGeometry[]=[];for(const {b,index} of chunk.buildings){const s=new THREE.Shape();const p=b.outline;if(p&&p.length>=3){s.moveTo(p[0].x-b.x,-(p[0].z-b.z));for(const v of p.slice(1))s.lineTo(v.x-b.x,-(v.z-b.z))}else{s.moveTo(-b.halfX,-b.halfZ);s.lineTo(b.halfX,-b.halfZ);s.lineTo(b.halfX,b.halfZ);s.lineTo(-b.halfX,b.halfZ)}s.closePath();const g=new THREE.ExtrudeGeometry(s,{depth:b.height,bevelEnabled:false});g.rotateX(-Math.PI/2);g.translate(b.x,0,b.z);const color=new THREE.Color(['#e7d5b9','#d9e4df','#f0cdb6','#c6d4e4','#eee6d7','#b9c6b4'][index%6]);const arr=new Float32Array(g.attributes.position.count*3);for(let i=0;i<arr.length;i+=3){arr[i]=color.r;arr[i+1]=color.g;arr[i+2]=color.b}g.setAttribute('color',new THREE.BufferAttribute(arr,3));parts.push(g)}const merged=parts.length?mergeGeometries(parts):null;parts.forEach(g=>g.dispose());return merged},[chunk]);React.useEffect(()=>()=>geometry?.dispose(),[geometry]);return geometry?<mesh geometry={geometry} castShadow receiveShadow><meshStandardMaterial vertexColors roughness={.9}/></mesh>:null}
 const ChunkDetail=React.memo(function ChunkDetail({chunk,context,textures,player}:{player:React.RefObject<Point>;chunk:Chunk;context:Chunk[];textures:ReturnType<typeof useRoadTextures>}){
  const items=useMemo(()=>{
- const boxes:Box[]=[];const windows:Box[]=[];const asphalt:Surface[]=[],paving:Surface[]=[];const segments=context.flatMap(c=>c.segments);const buildings=context.flatMap(c=>c.buildings);
+ const trees:Point[]=[];const boxes:Box[]=[];const windows:Box[]=[];const asphalt:Surface[]=[],paving:Surface[]=[];const segments=context.flatMap(c=>c.segments);const buildings=context.flatMap(c=>c.buildings);
  for(const p of chunk.segments){
  const a=-p.angle, ux=Math.cos(p.angle),uz=Math.sin(p.angle),nx=-uz,nz=ux;
  const add=(along:number,side:number,y:number,w:number,h:number,d:number,color:string)=>boxes.push({x:p.x+ux*along+nx*side,z:p.z+uz*along+nz*side,y,w,h,d,a,color});
@@ -33,13 +36,13 @@ const ChunkDetail=React.memo(function ChunkDetail({chunk,context,textures,player
  }
  }}
  for(let t=-p.length/2+3;t<p.length/2-2;t+=8){const x=p.x+ux*t,z=p.z+uz*t;if(!candidates.some(q=>{const dx=x-q.x,dz=z-q.z,c=Math.cos(q.angle),s=Math.sin(q.angle);return Math.abs(dx*c+dz*s)<q.length/2+1.5&&Math.abs(-dx*s+dz*c)<q.width/2+.2&&Math.abs(Math.sin(q.angle-p.angle))>.25}))add(t,0,.085,Math.min(3,p.length/2-t),.012,.15,'#e8d69a');}if(p.length>=24){for(const side of [-1,1]){const offset=side*(p.width/2-.65),x=p.x+nx*offset,z=p.z+nz*offset;if(!candidates.some(q=>{const dx=x-q.x,dz=z-q.z,c=Math.cos(q.angle),s=Math.sin(q.angle);return Math.abs(dx*c+dz*s)<q.length/2+1&&Math.abs(-dx*s+dz*c)<q.width/2+1})){add(0,offset,.074,.65,.008,.42,'#34383a');for(let j=-2;j<=2;j++)add(j*.11,offset,.08,.035,.006,.36,'#171c20')}}}
- if(treePosition(p,context)){add(5,p.width/2+2,1.5,0.35,3,0.35,'#775d43');add(5,p.width/2+2,4,2.6,2.8,2.6,'#56865a')}
+ const tree=treePosition(p,context);if(tree)trees.push(tree);
  }
  }
  for(const {b,index} of chunk.buildings){const f=facade(b,index,segments.filter(p=>Math.hypot(p.x-b.x,p.z-b.z)<100+p.length/2));boxes.push(...f.boxes);windows.push(...f.windows)}
- return {boxes,windows,asphalt,paving};
+ return {boxes,windows,asphalt,paving,trees,plots:greenPlots(chunk,context)};
  },[chunk,context]);
- return <group><Houses chunk={chunk}/><RoadSurface items={items.asphalt} texture={textures.asphalt}/><RoadSurface items={items.paving} texture={textures.paving} tile={1.6}/><Batch items={items.boxes}/><Batch items={items.windows} glass player={player}/></group>;
+ return <group><Houses chunk={chunk}/><Vegetation points={items.trees} player={player}/><GroundGreenery points={items.plots} player={player}/><RoadSurface items={items.asphalt} texture={textures.asphalt}/><RoadSurface items={items.paving} texture={textures.paving} tile={1.6}/><Batch items={items.boxes}/><Batch items={items.windows} glass player={player}/></group>;
 });
 
 // Stable context and keys keep overlapping chunks mounted across cell transitions.

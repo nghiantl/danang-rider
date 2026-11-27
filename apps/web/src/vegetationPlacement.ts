@@ -1,0 +1,7 @@
+import type {OSMMap,Point} from './osm.ts';
+import type {Chunk} from './world.ts';
+import {coastStart,coastEnd,shoreX,hasCoast} from './coast.ts';
+const cache=new WeakMap<OSMMap,Point[]>();
+export function coastalPalms(map:OSMMap):Point[]{const old=cache.get(map);if(old)return old;const points=hasCoast(map)?Array.from({length:48},(_,i)=>{const z=coastStart+25+i*(coastEnd-coastStart-50)/47;return {x:shoreX(z)-19,z}}).filter(p=>!map.buildings.some(b=>Math.abs(p.x-b.x)<b.halfX+3&&Math.abs(p.z-b.z)<b.halfZ+3)&&!map.roads.some(r=>r.points.slice(1).some((b,i)=>{const a=r.points[i],dx=b.x-a.x,dz=b.z-a.z,l=dx*dx+dz*dz,t=l?Math.max(0,Math.min(1,((p.x-a.x)*dx+(p.z-a.z)*dz)/l)):0;return Math.hypot(p.x-a.x-t*dx,p.z-a.z-t*dz)<r.width/2+3}))):[];cache.set(map,points);return points}
+export function greenClear(p:Point,context:Chunk[],radius:number){return !context.some(c=>c.obstacles.some(b=>Math.abs(p.x-b.x)<b.halfX+radius&&Math.abs(p.z-b.z)<b.halfZ+radius)||c.segments.some(s=>{const x=p.x-s.x,z=p.z-s.z,ux=Math.cos(s.angle),uz=Math.sin(s.angle);return Math.abs(x*ux+z*uz)<s.length/2+radius&&Math.abs(-x*uz+z*ux)<s.width/2+1.4+radius}))}
+export function greenPlots(chunk:Chunk,context:Chunk[]){const result:Point[]=[];for(const s of chunk.segments){if(s.length<24||s.width<8)continue;const x=Math.cos(s.angle),z=Math.sin(s.angle);for(const side of [-1,1]){const offset=side*(s.width/2+7),p={x:s.x-z*offset,z:s.z+x*offset};if(greenClear(p,context,3)&&result.every(q=>Math.hypot(p.x-q.x,p.z-q.z)>9))result.push(p)}}return result}

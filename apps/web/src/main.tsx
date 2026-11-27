@@ -9,10 +9,11 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 06.7.4 · SIDEWALK DELIVERY';
-const RELEASE_VERSION = '6.7.4';
+const SPRINT_LABEL = 'SPRINT 06.8 · REALISTIC VEGETATION';
+const RELEASE_VERSION = '6.8.0';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
+import {coastalPalms} from './vegetationPlacement';
 import {treePosition,type EnvironmentCollider} from './environmentCollision';
 import {checkpoints,type Checkpoint} from './policeCheckpoints';
 import {PoliceCheckpoints} from './PoliceCheckpointsView';
@@ -72,7 +73,7 @@ function City({map,world,position,target,stage,player}:{player:React.RefObject<P
   const active=useMemo(()=>nearby(world,cx*CHUNK_SIZE,cz*CHUNK_SIZE),[world,cx,cz]);
   if(map)return <group>
     <mesh rotation={[-Math.PI/2,0,0]} receiveShadow><planeGeometry args={[map.extent*2+150,map.extent*2+150]}/><meshStandardMaterial color="#a0a58c"/></mesh>
-    <React.Suspense fallback={null}><CityDetail world={world} chunks={active} player={player}/></React.Suspense><CitySigns map={map} position={position}/><Landmarks map={map} position={position}/><Beach map={map} position={position}/>
+    <React.Suspense fallback={null}><CityDetail world={world} chunks={active} player={player}/></React.Suspense><CitySigns map={map} position={position}/><Landmarks map={map} position={position}/><Beach map={map} position={position} player={player}/>
     {stage!=='done'&&<Marker at={new THREE.Vector3(target.x,0,target.z)} color={stage==='pickup'?'#ffd45a':'#42e3aa'} label="ĐƠN HÀNG"/>}
   </group>;
   return <group>
@@ -120,7 +121,7 @@ function Rider({cargo,feedback,xpRatio,onViolation,tuning,maxSpeed,firstPerson,o
    heading.current+=steer*dt*1.35*(1+tuning.tires*.08)*Math.min(1,Math.abs(velocity.current)/4);
    const dx=-Math.sin(heading.current)*velocity.current*dt;
    const dz=-Math.cos(heading.current)*velocity.current*dt;
-   if(map&&(!collisionCache.current||collisionCache.current.x!==cell(g.position.x)||collisionCache.current.z!==cell(g.position.z)))collisionCache.current={x:cell(g.position.x),z:cell(g.position.z),items:obstaclesNear(world,g.position.x,g.position.z),trees:nearby(world,g.position.x,g.position.z).flatMap(chunk=>{const entry=[...world.entries()].find(([,v])=>v===chunk);if(!entry)return [];const [x,z]=entry[0].split(':').map(Number);const context=nearby(world,x*CHUNK_SIZE,z*CHUNK_SIZE);return chunk.segments.flatMap(p=>{const t=treePosition(p,context);return t?[t]:[]})})};
+   if(map&&(!collisionCache.current||collisionCache.current.x!==cell(g.position.x)||collisionCache.current.z!==cell(g.position.z)))collisionCache.current={x:cell(g.position.x),z:cell(g.position.z),items:obstaclesNear(world,g.position.x,g.position.z),trees:coastalPalms(map).map(p=>({...p,radius:.175,kind:'tree' as const})).concat(nearby(world,g.position.x,g.position.z).flatMap(chunk=>{const entry=[...world.entries()].find(([,v])=>v===chunk);if(!entry)return [];const [x,z]=entry[0].split(':').map(Number);const context=nearby(world,x*CHUNK_SIZE,z*CHUNK_SIZE);return chunk.segments.flatMap(p=>{const t=treePosition(p,context);return t?[t]:[]})}))};
    let next:ReturnType<typeof moveWithBuildingCollision>=moveWithBuildingCollision(g.position.x,g.position.z,dx,dz,1.15,map?collisionCache.current?.items:undefined,map?map.extent+15:185,vehicles.current,[...(collisionCache.current?.trees??[]),...lampColliders.current,...signalColliders.current].filter(o=>Math.hypot(o.x-g.position.x,o.z-g.position.z)<10));
    if((next.vehicleHit||next.objectHit)&&Math.abs(velocity.current)>=1.5&&state.clock.elapsedTime-impactTime.current>0.65){const strength=Math.min(1,Math.abs(velocity.current)/14);impactTime.current=state.clock.elapsedTime;shake.current=strength;onCollision(strength,next.objectHit?true:(next.vehicleHit?.halfLength??0)>1);}
    if(map){const water=riverGrid(map);if((water.blocked(next)&&!water.blocked(g.position))||(seaBlocked(map,next)&&!seaBlocked(map,g.position)))next={x:g.position.x,z:g.position.z,blocked:true,vehicleHit:undefined,objectHit:undefined};}
