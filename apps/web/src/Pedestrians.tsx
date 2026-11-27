@@ -1,3 +1,5 @@
+import {settings} from './GraphicsSettings';
+import {graphics} from './performance';
 import {useMemo,useRef,useLayoutEffect} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
@@ -37,8 +39,8 @@ export function Pedestrians({map,player,world,crossingPeople,people,hits}:{peopl
  };
  for(let i=0;i<COUNT;i++){
  root.position.set(0,0,0);root.rotation.set(0,0,0);root.updateMatrix();
- let w=walkers.current[i];let q=w?walkerPose(w,paths[w.path]):null;
- if(!w||!q||Math.hypot(q.x-p.x,q.z-p.z)>145){
+ const limit=settings.mode==='auto'?[10,17,24][graphics.tier]:settings.people;let w=walkers.current[i];let q=w?walkerPose(w,paths[w.path]):null;
+ if(i>=limit){w=null;walkers.current[i]=null;falls.current.delete(i);}else if(!w||!q||Math.hypot(q.x-p.x,q.z-p.z)>145){
  w=null;falls.current.delete(i);
  for(let tries=0;tries<8&&nearby.current.length;tries++){
  const id=nearby.current[Math.floor(Math.random()*nearby.current.length)],path=paths[id];

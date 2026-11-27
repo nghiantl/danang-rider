@@ -1,3 +1,5 @@
+import {settings} from './GraphicsSettings';
+import {graphics} from './performance';
 import type {EnvironmentCollider} from './environmentCollision';
 import {vehicleCollider,penetration,type VehicleCollider} from './vehicleCollision';
 import {useMemo,useRef,useLayoutEffect} from 'react';
@@ -27,12 +29,13 @@ export function Traffic({roads,player,vehicles,crossingPeople,signalColliders}:{
  const local=localCache.current;
  const place=(mesh:THREE.InstancedMesh,i:number,x:number,y:number,z:number,h:number,w:number,height:number,d:number)=>{dummy.position.set(x,y,z);dummy.rotation.set(0,h,0);dummy.scale.set(w,height,d);dummy.updateMatrix();mesh.setMatrixAt(i,dummy.matrix)};
  const published:VehicleCollider[]=[];
+ const limit=settings.mode==='auto'?[8,14,20][graphics.tier]:settings.traffic;for(let i=limit;i<COUNT;i++)delete cars.current[i];
  const targets=cars.current.map(c=>c?desiredSpeed(c,lanes,cars.current,p,signals,time,crossingPeople.current):0);
  for(let i=0;i<COUNT;i++){
  let c=cars.current[i];let q=c?pose(lanes[c.lane],c.t):null;
  const before=c?{...c}:null;
  if(c){const target=targets[i]??0;c.speed=Math.min(target,c.speed+3*dt);}
- if(!c||!q||Math.hypot(q.x-p.x,q.z-p.z)>240||!advance(c,lanes,dt)){
+ if(i>=limit){q=null;}else if(!c||!q||Math.hypot(q.x-p.x,q.z-p.z)>240||!advance(c,lanes,dt)){
  const choices=local.filter(({l})=>{const q=pose(l,l.length/2);return !insideJunction(l,l.length/2,lanes,signals)&&Math.hypot(q.x-p.x,q.z-p.z)>30&&cars.current.every(other=>{if(!other)return true;const o=pose(lanes[other.lane],other.t);return Math.hypot(q.x-o.x,q.z-o.z)>8})});
  if(choices.length){const {l,i:id}=choices[Math.floor(Math.random()*choices.length)];c={lane:id,t:l.length/2,speed:0,cruise:5+Math.random()*5,kind:i%3===0?1:0};cars.current[i]=c;q=pose(l,c.t)}else{delete cars.current[i];q=null}
  }else {q=pose(lanes[c.lane],c.t);if(before&&penetration(p.x,p.z,1.15,vehicleCollider(q.x,q.z,q.heading,c.kind))>0){Object.assign(c,before);c.speed=0;q=pose(lanes[c.lane],c.t);}}
