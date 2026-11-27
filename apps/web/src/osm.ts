@@ -7,14 +7,9 @@ export type Point = { x: number; z: number };
 export type Road = { points: Point[]; width: number; name: string; kind?: string; oneway?: number; bridge?: boolean };
 export type Footprint = { x: number; z: number; halfX: number; halfZ: number; height: number; outline?: Point[]; kind?: string; name?:string };
 export type OSMMap = { roads: Road[]; buildings: Footprint[]; pickup: Point; delivery: Point; spawn: Point; extent: number; bounds?:number[] };
-const CENTER_LAT = 16.0678;
-const CENTER_LON = 108.2208;
-const LAT_METERS = 111320;
-const LON_METERS = Math.cos(CENTER_LAT * Math.PI / 180) * LAT_METERS;
+import {project} from './geoProjection.ts';
+export {project} from './geoProjection.ts';
 const BBOX = '16.0662,108.2191,16.0694,108.2225';
-export function project(lat: number, lon: number): Point {
-  return { x: (lon - CENTER_LON) * LON_METERS, z: -(lat - CENTER_LAT) * LAT_METERS };
-}
 type Element = { type: string; tags?: Record<string,string>; geometry?: { lat:number; lon:number }[] };
 const WIDTH: Record<string,number> = { primary: 14, secondary: 12, tertiary: 10, residential: 8, service: 6, living_street: 6, unclassified: 8, pedestrian: 5 };
 // Clip full OSM ways to the downloaded coverage; preserve shared interior vertices.
