@@ -1,4 +1,5 @@
-import {project,type OSMMap,type Point} from './osm.ts';
+import {project} from './geoProjection.ts';
+import type {OSMMap,Point} from './osm.ts';
 // Provisional shoreline, intentionally separate from the existing Han River mask.
 const shore=[[16.0732,108.2458],[16.0678,108.2468],[16.0624,108.2476],[16.057,108.2484],[16.0516,108.2492]].map(([lat,lon])=>project(lat,lon));
 export const coastStart=shore[0].z,coastEnd=shore[shore.length-1].z;

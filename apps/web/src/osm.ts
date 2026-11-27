@@ -1,3 +1,4 @@
+import {fillBuildingGaps} from './buildingCoverage.ts';
 import {clearRoadBuildings} from './buildingGeometry.ts';
 import {buildGraph,missionPoints} from './navigation.ts';
 // Real OpenStreetMap geometry loaded at runtime; no API key required.
@@ -5,15 +6,10 @@ import {buildGraph,missionPoints} from './navigation.ts';
 export type Point = { x: number; z: number };
 export type Road = { points: Point[]; width: number; name: string; kind?: string; oneway?: number; bridge?: boolean };
 export type Footprint = { x: number; z: number; halfX: number; halfZ: number; height: number; outline?: Point[]; kind?: string; name?:string };
-export type OSMMap = { roads: Road[]; buildings: Footprint[]; pickup: Point; delivery: Point; spawn: Point; extent: number; bounds?:number[] };
-const CENTER_LAT = 16.0678;
-const CENTER_LON = 108.2208;
-const LAT_METERS = 111320;
-const LON_METERS = Math.cos(CENTER_LAT * Math.PI / 180) * LAT_METERS;
+export type OSMMap = { roads: Road[]; buildings: Footprint[]; pickup: Point; delivery: Point; spawn: Point; extent: number; bounds?:number[]; protectedAreas?:Point[][] };
+import {project} from './geoProjection.ts';
+export {project} from './geoProjection.ts';
 const BBOX = '16.0662,108.2191,16.0694,108.2225';
-export function project(lat: number, lon: number): Point {
-  return { x: (lon - CENTER_LON) * LON_METERS, z: -(lat - CENTER_LAT) * LAT_METERS };
-}
 type Element = { type: string; tags?: Record<string,string>; geometry?: { lat:number; lon:number }[] };
 const WIDTH: Record<string,number> = { primary: 14, secondary: 12, tertiary: 10, residential: 8, service: 6, living_street: 6, unclassified: 8, pedestrian: 5 };
 // Clip full OSM ways to the downloaded coverage; preserve shared interior vertices.
@@ -34,9 +30,12 @@ export function clipRoad(points:Point[],bounds:number[]):Point[][]{
 export function parseOSM(elements: Element[], bounds?:number[]): OSMMap {
   const roads: Road[] = [];
   let buildings: Footprint[] = [];
+  const protectedAreas:Point[][]=[];
   for (const element of elements) {
     if (element.type !== 'way' || !element.geometry || element.geometry.length < 2) continue;
     const points = element.geometry.map(p => project(p.lat,p.lon));
+    const tags=element.tags||{};
+    if(points.length>=3&&(/^(park|garden|playground|pitch|sports_centre|nature_reserve|recreation_ground)$/.test(tags.leisure||'')||/^(grass|recreation_ground|cemetery|forest|village_green)$/.test(tags.landuse||'')||/^(water|wood|wetland|beach)$/.test(tags.natural||'')||/^(school|hospital|place_of_worship|university)$/.test(tags.amenity||'')))protectedAreas.push(points);
     if (element.tags?.highway && WIDTH[element.tags.highway]) {
       const runs:Point[][]=bounds?clipRoad(points,bounds):[points];
       for(const points of runs)roads.push({ points, width: WIDTH[element.tags.highway], name: element.tags.name || 'Đường chưa có tên', kind:element.tags.highway, bridge:!!element.tags.bridge&&element.tags.bridge!=='no', oneway:element.tags.oneway==='-1'?-1:element.tags.oneway==='no'?0:['yes','1','true'].includes(element.tags.oneway)||element.tags.junction==='roundabout'?1:0 });
@@ -56,7 +55,7 @@ export function parseOSM(elements: Element[], bounds?:number[]): OSMMap {
   const mission=missionPoints(buildGraph(roads),p=>Math.abs(p.x)<extent-8&&Math.abs(p.z)<extent-8&&!buildings.some(b=>Math.abs(p.x-b.x)<b.halfX+2&&Math.abs(p.z-b.z)<b.halfZ+2));
   if(!mission)throw new Error('OSM roads insufficient for connected gameplay');
   const {spawn,pickup,delivery}=mission;
-  return {roads,buildings,pickup,delivery,spawn,extent,bounds};
+  return {roads,buildings,pickup,delivery,spawn,extent,bounds,protectedAreas};
 }
 // Try independent public Overpass instances. GET avoids POST preflight on mobile Safari.
 // Keep a short per-server timeout and report failures instead of silently hiding them.
@@ -66,14 +65,14 @@ export const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter'
 ];
 export async function loadBundledDaNangMap(signal?: AbortSignal): Promise<OSMMap> {
-  const cached=await Promise.race([readPreparedCache(),new Promise<null>(resolve=>setTimeout(()=>resolve(null),400))]);if(signal?.aborted)throw new Error('OSM request cancelled');if(cached)return cached;
-  try{const prepared=await fetch(import.meta.env.BASE_URL+'data/danang-prepared-v1.json',{signal,cache:'default'});if(prepared.ok){const map=await prepared.json() as OSMMap;if(map.roads?.length&&Array.isArray(map.buildings)&&map.spawn&&map.pickup&&map.delivery&&Number.isFinite(map.extent)){void writePreparedCache(map);return map}}}catch(error){if(signal?.aborted)throw error}
+  const cached=await Promise.race([readPreparedCache(),new Promise<null>(resolve=>setTimeout(()=>resolve(null),400))]);if(signal?.aborted)throw new Error('OSM request cancelled');if(cached)return fillBuildingGaps(cached);
+  try{const prepared=await fetch(import.meta.env.BASE_URL+'data/danang-prepared-v1.json',{signal,cache:'default'});if(prepared.ok){const map=await prepared.json() as OSMMap;if(map.roads?.length&&Array.isArray(map.buildings)&&map.spawn&&map.pickup&&map.delivery&&Number.isFinite(map.extent)){void writePreparedCache(map);return fillBuildingGaps(map)}}}catch(error){if(signal?.aborted)throw error}
   // The file is generated from real OSM data by scripts/update-osm.mjs.
   // Never treat an empty or missing snapshot as a valid city.
   const response=await fetch(import.meta.env.BASE_URL+'data/danang-osm.json',{signal,cache:'default'});
   if(!response.ok)throw new Error('OSM snapshot HTTP '+response.status);
   const data: {elements?:Element[];bounds?:number[]}=await response.json();
-  return parseOSM(data.elements||[],data.bounds??[108.2152,16.0516,108.2376,16.0732]);
+  return fillBuildingGaps(parseOSM(data.elements||[],data.bounds??[108.2152,16.0516,108.2376,16.0732]));
 }
 export async function loadDaNangMap(signal?: AbortSignal): Promise<OSMMap> {
   try { return await loadBundledDaNangMap(signal); } catch(error) {
@@ -95,7 +94,7 @@ export async function loadDaNangMap(signal?: AbortSignal): Promise<OSMMap> {
       const data: {elements?:Element[]}=await response.json();
       const map=parseOSM(data.elements||[]);
       console.info('[DaNang Rider] OSM loaded from',endpoint,'roads:',map.roads.length,'buildings:',map.buildings.length);
-      return map;
+      return fillBuildingGaps(map);
     } catch(error) {
       if(signal?.aborted)throw new Error('OSM request cancelled');
       const reason=error instanceof Error?error.message:String(error);
