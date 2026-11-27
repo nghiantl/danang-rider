@@ -1,5 +1,5 @@
 import {settings} from './GraphicsSettings';
-import React,{useMemo,useLayoutEffect,useRef} from 'react';
+import React,{useMemo,useLayoutEffect,useRef,useEffect,useState} from 'react';
 import * as THREE from 'three';
 import {nearby,CHUNK_SIZE,type Chunk} from './world';
 import {greenPlots} from './vegetationPlacement';
@@ -52,5 +52,9 @@ const ChunkDetail=React.memo(function ChunkDetail({chunk,context,textures,player
 export const CityDetail=React.memo(function CityDetail({world,chunks,player}:{player:React.RefObject<Point>;world:Map<string,Chunk>;chunks:Chunk[]}){
  const textures=useRoadTextures();
  const index=useMemo(()=>{const result=new Map<Chunk,{id:string;context:Chunk[]}>();for(const [id,chunk] of world){const [x,z]=id.split(':').map(Number);result.set(chunk,{id,context:nearby(world,x*CHUNK_SIZE,z*CHUNK_SIZE)});}return result},[world]);
- return <group>{chunks.map(chunk=>{const entry=index.get(chunk);return entry?<ChunkDetail key={entry.id} chunk={chunk} context={entry.context} textures={textures} player={player}/>:null})}</group>;
+ const ordered=useMemo(()=>{const p=player.current;const distance=(c:Chunk)=>{const id=index.get(c)?.id;if(!id||!p)return 0;const [x,z]=id.split(':').map(Number);return Math.hypot((x+.5)*CHUNK_SIZE-p.x,(z+.5)*CHUNK_SIZE-p.z)};return [...chunks].sort((a,b)=>distance(a)-distance(b))},[chunks,index,player]);
+ const [loaded,setLoaded]=useState<Chunk[]>(()=>ordered.slice(0,1));
+ useEffect(()=>{let cancelled=false;let timer=0;const start=performance.now();let pending=ordered.slice();const step=()=>{if(cancelled)return;const next=pending.shift();if(!next){console.info('[Rider startup] nearby chunks scheduled',Math.round(performance.now()-start));return}setLoaded(prev=>[...prev.filter(c=>ordered.includes(c)&&c!==next),next]);timer=window.setTimeout(step,120)};timer=window.setTimeout(step,120);return()=>{cancelled=true;window.clearTimeout(timer)}},[ordered]);
+ const visible=ordered.filter(c=>loaded.includes(c)||c===ordered[0]);
+ return <group>{visible.map(chunk=>{const entry=index.get(chunk);return entry?<ChunkDetail key={entry.id} chunk={chunk} context={entry.context} textures={textures} player={player}/>:null})}</group>;
 });
