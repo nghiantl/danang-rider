@@ -5,7 +5,7 @@ import {shoreX,hasCoast} from './coast.ts';
 import {landmarkSites,segmentDistance} from './landmarkPlacement.ts';
 import {riverfrontSites} from './riverfrontSites.ts';
 import {project} from './geoProjection.ts';
-// Conservative infill only in established residential blocks; never infer an entire empty district.
+// Dense procedural infill for the current urban map; OSM footprints take priority.
 export function fillBuildingGaps(map:OSMMap):OSMMap {
  const originals=map.buildings.filter(b=>b.kind!=='procedural-residential');
  const grid=new Map<string,Footprint[]>(),size=40;
@@ -16,7 +16,8 @@ export function fillBuildingGaps(map:OSMMap):OSMMap {
  const river=riverGrid({...map,buildings:originals}),wet=river.blocked,coast=hasCoast(map),candidates:Footprint[]=[];
  const banks=new Map<number,{min:number;max:number}>();for(const p of river.cells){const row=banks.get(p.z);if(row){row.min=Math.min(row.min,p.x);row.max=Math.max(row.max,p.x)}else banks.set(p.z,{min:p.x,max:p.x})}
  const sites=[...riverfrontSites.map(s=>({...s.point,r:65})),...landmarkSites(map).map(({b})=>({x:b.x,z:b.z,r:Math.hypot(b.halfX,b.halfZ)+20})),{...project(16.0681,108.2242),r:65},{...project(16.0654,108.2234),r:45}];
- const reserved=[[[16.058,108.198],[16.067,108.210]],[[16.061,108.207],[16.070,108.215]]].map(([a,b])=>[project(a[0],a[1]),project(b[0],b[1]),project(a[0],b[1])]);
+ // Explicit geographic masks require verified boundaries; retain OSM exclusions until then.
+ const reserved: {x:number;z:number}[][]=[];
  const areas=[...(map.protectedAreas||[]),...reserved].filter(p=>p.length>=3).map(p=>({minX:Math.min(...p.map(q=>q.x)),maxX:Math.max(...p.map(q=>q.x)),minZ:Math.min(...p.map(q=>q.z)),maxZ:Math.max(...p.map(q=>q.z))}));
  const bridges=map.roads.filter(r=>r.bridge).flatMap(r=>r.points.slice(1).map((p,i)=>({a:r.points[i],b:p,w:r.width})));
  outer: for(const road of map.roads){if(road.bridge||!['primary','secondary','tertiary','residential','service','living_street','unclassified'].includes(road.kind||''))continue;
