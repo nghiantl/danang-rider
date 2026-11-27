@@ -15,4 +15,4 @@ function Site({b,kind,position}:{b:Footprint;kind:string;position:Point}){
  <mesh position={[0,.1,0]}><boxGeometry args={[w*.5,.15,d*.5]}/><meshStandardMaterial ref={lamp} color="#f2d9a3" emissive="#f1b85e" emissiveIntensity={0}/></mesh>
  </group>
 }
-export function ExtraLandmarks({map,position}:{map:OSMMap;position:Point}){const sites=useMemo(()=>landmarkSites(map),[map]);return <group>{sites.map(({b,kind},i)=><Site key={i} b={b} kind={kind} position={position}/>)}</group>}
+export function ExtraLandmarks({map,position}:{map:OSMMap;position:Point}){const sites=useMemo(()=>landmarkSites(map),[map]);return <group>{sites.filter(s=>s.kind!=='carp'&&s.kind!=='love').map(({b,kind},i)=><Site key={i} b={b} kind={kind} position={position}/>)}</group>}
