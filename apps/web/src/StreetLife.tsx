@@ -1,8 +1,9 @@
 import {useMemo,useRef} from 'react';
 import {useFrame} from '@react-three/fiber';
+import {Text} from '@react-three/drei';
 import * as THREE from 'three';
 import type {OSMMap,Point} from './osm';
-import {streetShops,shopOpen,type Shop} from './streetLife';
+import {streetShops,shopOpen,shopNames,type Shop} from './streetLife';
 import {graphics,pointGrid} from './performance';
 import {environmentAt,weatherVisual} from './environment';
 function Box({p,s,c}:{p:[number,number,number];s:[number,number,number];c:string}){return <mesh position={p}><boxGeometry args={s}/><meshStandardMaterial color={c}/></mesh>}
@@ -12,9 +13,12 @@ function Stall({shop}:{shop:Shop}){
  return <group ref={root} position={[shop.x,.12,shop.z]} rotation={[0,shop.angle,0]}>
  <Box p={[0,.65,0]} s={[.85,.08,.65]} c="#a8a6a0"/><Box p={[0,.32,0]} s={[.12,.65,.12]} c="#777777"/>
  {[-1,1].map(s=><group key={s}><Box p={[s*.68,.27,0]} s={[.38,.1,.38]} c="#b62e36"/><Box p={[s*.68,.12,0]} s={[.27,.25,.27]} c="#b62e36"/></group>)}
+ {(shop.kind===1||shop.kind===3||shop.kind===2)&&<group position={[0,0,-.8]}><Box p={[0,.45,0]} s={[1.1,.8,.48]} c="#999e9f"/><Box p={[0,1.02,0]} s={[1.1,.35,.48]} c="#b7d5d9"/>{[-.4,.4].map(x=><Box key={x} p={[x,.13,0]} s={[.16,.26,.5]} c="#333333"/>)}</group>}
+ {shop.kind===4&&<Box p={[0,.72,0]} s={[.45,.12,.35]} c="#d5c5a4"/>}
  <Box p={[0,.76,0]} s={[.09,.14,.09]} c="#e9d6a0"/>
  {shop.covered&&<><Box p={[0,1.15,0]} s={[.06,2.3,.06]} c="#777777"/><mesh position={[0,2.3,0]}><coneGeometry args={[1.15,.45,8]}/><meshStandardMaterial color={['#d84d43','#467f9b','#e3b34b'][shop.kind%3]}/></mesh></>}
  <mesh position={[0,1.65,-.55]}><boxGeometry args={[.8,.2,.08]}/><meshStandardMaterial ref={lamp} color="#f5d7a1" emissive="#ffc36b"/></mesh>
+ <Text position={[0,1.65,-.49]} fontSize={.11} color="#442c20" anchorX="center" anchorY="middle">{shopNames[shop.kind]}</Text>
  <group ref={guest} position={[.68,.28,0]}><Box p={[0,.35,0]} s={[.32,.48,.24]} c="#477b99"/><mesh position={[0,.72,0]}><sphereGeometry args={[.13,8,6]}/><meshStandardMaterial color="#c58d64"/></mesh><Box p={[-.15,.08,0]} s={[.3,.15,.25]} c="#34424d"/></group>
  </group>
 }
