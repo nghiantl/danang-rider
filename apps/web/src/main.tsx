@@ -9,8 +9,8 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import './style.css';
 
-const SPRINT_LABEL = 'SPRINT 06.9.4 · RIVERFRONT PROMENADE';
-const RELEASE_VERSION = '6.9.4';
+const SPRINT_LABEL = 'SPRINT 06.9.5 · RIVERSIDE PAVING';
+const RELEASE_VERSION = '6.9.5';
 const BUILD_SHA = (import.meta.env.VITE_VERCEL_GIT_COMMIT_SHA || '').trim();
 const BUILD_LABEL = `v${RELEASE_VERSION} · Build ${BUILD_SHA ? BUILD_SHA.slice(0, 7) : 'unknown'}`;
 import {coastalPalms} from './vegetationPlacement';
