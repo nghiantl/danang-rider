@@ -1,6 +1,6 @@
 import type {Point} from './osm.ts';
 import type {Chunk,Segment} from './world.ts';
-export type EnvironmentCollider=Point & {radius:number;kind:'tree'|'lamp'|'signal'};
+export type EnvironmentCollider=Point & {radius:number;kind:'tree'|'lamp'|'signal'|'shop'};
 export function treePosition(p:Segment,context:Chunk[]):EnvironmentCollider|null{
  if(p.width<8||p.length<18)return null;
  const ux=Math.cos(p.angle),uz=Math.sin(p.angle),x=p.x+ux*5-uz*(p.width/2+2),z=p.z+uz*5+ux*(p.width/2+2);
