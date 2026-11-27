@@ -1,3 +1,4 @@
+import {settings} from './GraphicsSettings';
 import {graphics,budgets,pointGrid} from './performance';
 import {useMemo,useRef,useEffect,useState} from 'react';
 import {useFrame,useThree} from '@react-three/fiber';
@@ -5,9 +6,9 @@ import * as THREE from 'three';
 import type {EnvironmentCollider} from './environmentCollision';
 import type {OSMMap,Point} from './osm';
 import {environmentAt,clockLabel,parseWeather,validCache,weatherLabel,WEATHER_URL,REFRESH_MS,CACHE_KEY,type Weather,weatherVisual,prefetchWeather} from './environment';
-const RAIN=700,LAMPS=12,ACTIVE_LIGHTS=6;
+const RAIN=1000,LAMPS=12,ACTIVE_LIGHTS=8;
 export function Environment({map,player,onStatus,audioWeather,lampColliders}:{lampColliders:React.RefObject<EnvironmentCollider[]>;audioWeather:React.RefObject<{rain:number;night:boolean}>;map:OSMMap|null;player:React.RefObject<Point>;onStatus:(s:string)=>void}){
- const {scene}=useThree();const [lightCount,setLightCount]=useState(6);const lastQuality=useRef(2);const statusAt=useRef(-10);
+ const {scene}=useThree();const [lightCount,setLightCount]=useState(6);const lastQuality=useRef(-1);const statusAt=useRef(-10);
  useEffect(()=>()=>{weatherVisual.rain=0;weatherVisual.wetness=0;weatherVisual.windX=0;weatherVisual.windZ=0},[]);
  const lampMaterial=useRef<THREE.MeshStandardMaterial>(null);const shadowAnchor=useMemo(()=>new THREE.Vector3(),[]);
  useEffect(()=>()=>{lampColliders.current=[]},[lampColliders]);
@@ -36,7 +37,7 @@ export function Environment({map,player,onStatus,audioWeather,lampColliders}:{la
  },[map]);
  const nearbyLamps=useMemo(()=>pointGrid(locations),[locations]);
  useFrame((_,raw)=>{
- const dt=Math.min(raw,0.1);elapsed.current+=dt;const budget=budgets[graphics.tier];if(lastQuality.current!==graphics.tier){lastQuality.current=graphics.tier;setLightCount(budget.lights);lastScan.current=-10;}
+ const dt=Math.min(raw,0.1);elapsed.current+=dt;const budget=settings.mode==='auto'?budgets[graphics.tier]:settings;if(lastQuality.current!==budget.lights){lastQuality.current=budget.lights;setLightCount(budget.lights);lastScan.current=-10;}
  const now=new Date(),e=environmentAt(now),p=player.current;
  wet.current+=((weather.current?.rain??0)-wet.current)*(1-Math.exp(-dt*0.8));
  cloud.current+=((weather.current?.cloud??0)-cloud.current)*(1-Math.exp(-dt*0.5));
@@ -49,7 +50,7 @@ export function Environment({map,player,onStatus,audioWeather,lampColliders}:{la
  if(scene.background instanceof THREE.Color)scene.background.copy(colors.sky);else scene.background=colors.sky.clone();
  if(scene.fog instanceof THREE.Fog){scene.fog.color.copy(colors.sky);scene.fog.near=180-100*Math.max(wet.current,mist.current);scene.fog.far=600-450*Math.max(wet.current,mist.current)}
  if(hemi.current){hemi.current.intensity=(graphics.tier===0?1.05:.78)+e.daylight*(.85+cloud.current*.25);hemi.current.color.copy(colors.sky).lerp(colors.day,.52);hemi.current.groundColor.set('#8b8171');}
- if(sun.current){const light=sun.current;light.intensity=.04+e.daylight*(2.3-cloud.current*1.85);light.color.copy(colors.sun.set('#fff8eb').lerp(colors.dusk,e.twilight*.8));const angle=(e.hour-6)/12*Math.PI;shadowAnchor.set(Math.round(p.x/4)*4,0,Math.round(p.z/4)*4);light.target.position.copy(shadowAnchor);light.target.updateMatrixWorld();light.position.set(shadowAnchor.x+Math.cos(angle)*100,Math.max(12,Math.sin(angle)*100),shadowAnchor.z+35);light.castShadow=graphics.tier>0&&e.daylight>.35&&cloud.current<.85;}
+ if(sun.current){const light=sun.current;light.intensity=.04+e.daylight*(2.3-cloud.current*1.85);light.color.copy(colors.sun.set('#fff8eb').lerp(colors.dusk,e.twilight*.8));const angle=(e.hour-6)/12*Math.PI;shadowAnchor.set(Math.round(p.x/4)*4,0,Math.round(p.z/4)*4);light.target.position.copy(shadowAnchor);light.target.updateMatrixWorld();light.position.set(shadowAnchor.x+Math.cos(angle)*100,Math.max(12,Math.sin(angle)*100),shadowAnchor.z+35);const size=settings.mode==='auto'?[0,256,512][graphics.tier]:settings.shadowSize;if(size>0&&light.shadow.mapSize.x!==size){light.shadow.map?.dispose();light.shadow.map=null;light.shadow.mapSize.set(size,size);light.shadow.needsUpdate=true;}light.castShadow=settings.shadow&&size>0&&e.daylight>.35&&cloud.current<.85;}
  if(elapsed.current-statusAt.current>1){statusAt.current=elapsed.current;const status=clockLabel(now)+' · '+now.toLocaleDateString('vi-VN')+' · '+weatherLabel(weather.current,failed.current,now.getTime());if(status!==last.current){last.current=status;onStatus(status)}}
  if(rain.current){rain.current.visible=wet.current>0.02;rain.current.position.set(p.x,0,p.z);const mat=rain.current.material as THREE.LineBasicMaterial;mat.opacity=wet.current*.65;if(rain.current.visible){const attr=geometry.getAttribute('position');for(let i=0;i<budget.rain;i++){const d=drops[i];d.y-=dt*(14+wet.current*9);d.x+=weatherVisual.windX*dt;d.z+=weatherVisual.windZ*dt;if(Math.abs(d.x)>20)d.x-=Math.sign(d.x)*40;if(Math.abs(d.z)>20)d.z-=Math.sign(d.z)*40;if(d.y<0){d.y+=18;d.x=Math.random()*40-20;d.z=Math.random()*40-20}attr.setXYZ(i*2,d.x,d.y,d.z);attr.setXYZ(i*2+1,d.x-weatherVisual.windX*.045,d.y+.45+wet.current*.45,d.z-weatherVisual.windZ*.045)}geometry.setDrawRange(0,Math.ceil(budget.rain*wet.current)*2);attr.needsUpdate=true}}
  if(lamps.current){lamps.current.visible=true;if(elapsed.current-lastScan.current>0.7){lastScan.current=elapsed.current;const near=nearbyLamps(p.x,p.z,100).sort((a,b)=>Math.hypot(a.x-p.x,a.z-p.z)-Math.hypot(b.x-p.x,b.z-p.z)).slice(0,LAMPS);lampColliders.current=near.map(q=>({...q,radius:0.12,kind:'lamp'}));for(let i=0;i<LAMPS;i++){const q=near[i];dummy.position.set(q?.x??0,q?3:-100,q?.z??0);dummy.scale.setScalar(q?1:0);dummy.updateMatrix();poles.current?.setMatrixAt(i,dummy.matrix);dummy.position.set(q?.x??0,q?6:-100,q?.z??0);dummy.scale.setScalar(q?1:0);dummy.updateMatrix();lamps.current.setMatrixAt(i,dummy.matrix);dummy.position.set(q?.x??0,q?.z===undefined?-100:.095,q?.z??0);dummy.rotation.set(-Math.PI/2,0,0);dummy.scale.setScalar(q?1:0);dummy.updateMatrix();pools.current?.setMatrixAt(i,dummy.matrix);dummy.rotation.set(0,0,0);if(i<ACTIVE_LIGHTS&&lights.current[i]){lights.current[i]!.position.set(q?.x??0,q?5.5:-100,q?.z??0)}}if(pools.current)pools.current.instanceMatrix.needsUpdate=true;lamps.current.instanceMatrix.needsUpdate=true;if(poles.current)poles.current.instanceMatrix.needsUpdate=true}}
