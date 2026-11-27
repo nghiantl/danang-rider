@@ -1,4 +1,5 @@
-import {project,type OSMMap,type Point} from './osm.ts';
+import {project} from './geoProjection.ts';
+import type {OSMMap,Point} from './osm.ts';
 const west=[[16.0516,108.2247],[16.059,108.2248],[16.0678,108.2249],[16.0732,108.2244]],east=[[16.0732,108.2288],[16.0678,108.2291],[16.059,108.2294],[16.0516,108.2298]];
 const polygon=[...west,...east].map(([lat,lon])=>project(lat,lon));
 function inside(p:Point){let hit=false;for(let i=0,j=polygon.length-1;i<polygon.length;j=i++){const a=polygon[i],b=polygon[j];if((a.z>p.z)!==(b.z>p.z)&&p.x<(b.x-a.x)*(p.z-a.z)/(b.z-a.z)+a.x)hit=!hit}return hit}
