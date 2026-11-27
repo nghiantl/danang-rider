@@ -85,3 +85,5 @@ html.game-active body{position:fixed;inset:0;width:100%}
 
 /* Prevent iOS text selection and callouts during gameplay; keep form fields editable. */
 .game{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}.game input,.game textarea{-webkit-user-select:text;user-select:text;-webkit-touch-callout:default}
+
+.game[data-startup=loading]>:not(.startup-loading):not(:has(canvas)):not([role=alert]){visibility:hidden}.startup-loading{position:absolute;inset:0;z-index:900;display:grid;place-items:center;background:radial-gradient(ellipse at 80% 20%,#235f67,#101c2d 75%);padding:24px;touch-action:none}.startup-panel{width:min(460px,100%);text-align:center;color:#d6e8e9}.startup-panel h1{font-size:clamp(28px,7vw,52px);margin:12px 0}.startup-panel em{color:#4ce4c3;font-style:normal}.startup-progress{height:12px;border-radius:20px;background:#263c4c;overflow:hidden}.startup-progress span{display:block;height:100%;background:#4ce4c3;transition:width .2s ease}.startup-panel button{padding:12px;border-radius:10px;border:0;background:#4ce4c3;color:#101c2d}.startup-panel small{letter-spacing:2px}
