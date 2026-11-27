@@ -10,13 +10,14 @@ export function RiverPromenade({map}:{map:OSMMap}){
  const {paving,rails}=useMemo(()=>{const cells=riverGrid(map).cells,rows=new Map<number,{west:number;east:number}>();for(const p of cells){const row=rows.get(p.z);if(row){row.west=Math.min(row.west,p.x-2);row.east=Math.max(row.east,p.x+2)}else rows.set(p.z,{west:p.x-2,east:p.x+2})}
  const paving:Part[]=[],rails:Part[]=[];const love=loveBridgeAnchor(cells,riverfrontSites[0].point);
  const roads=map.roads.flatMap(r=>r.points.slice(1).map((b,i)=>({a:r.points[i],b,w:r.width,bridge:r.bridge})));
- const named=map.roads.filter(r=>/bach dang|tran hung dao/.test(r.name.normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/đ/g,'d').toLowerCase())).flatMap(r=>r.points.slice(1).map((b,i)=>({a:r.points[i],b})));
- for(const [z,row] of rows)for(const side of [-1,1]){const edge=side===1?row.east:row.west,p={x:edge+side*2,z};if(!named.some(r=>distance(p,r.a,r.b)<65))continue;
- if(roads.some(r=>distance(p,r.a,r.b)<r.w/2+3))continue;
- if(map.buildings.some(b=>Math.abs(p.x-b.x)<b.halfX+3&&Math.abs(z-b.z)<b.halfZ+3))continue;
- paving.push({x:p.x,z,y:.08,w:4,h:.16,d:4});
+ for(const [z,row] of rows)for(const side of [-1,1]){const edge=side===1?row.east:row.west;
+ const x=edge+side*.35,p={x,z};
+ // Rail clearance is independent of the wider pavement clearance.
+ const clear=(q:Point,pad:number)=>!roads.some(r=>distance(q,r.a,r.b)<r.w/2+pad)&&!map.buildings.some(b=>Math.abs(q.x-b.x)<b.halfX+pad&&Math.abs(q.z-b.z)<b.halfZ+pad);
+ if(!clear(p,.35))continue;
+ for(let i=0;i<4;i++){const q={x:edge+side*(i+.5),z};if(clear(q,.55))paving.push({x:q.x,z,y:.12,w:1,h:.24,d:4});}
  if(side===1&&love&&Math.abs(z-love.z)<5)continue;
- const x=edge+side*.3;rails.push({x,z,y:.65,w:.13,h:1.3,d:.13},{x,z,y:1.15,w:.12,h:.12,d:4},{x,z,y:.55,w:.09,h:.09,d:4});
+ rails.push({x,z,y:.8,w:.16,h:1.6,d:.16},{x,z,y:1.4,w:.16,h:.16,d:4},{x,z,y:.75,w:.12,h:.12,d:4});
  }return {paving,rails}},[map]);
- return <group><Batch parts={paving} color="#c8c2b5"/><Batch parts={rails} color="#647078"/></group>
+ return <group><Batch parts={paving} color="#ded4c2"/><Batch parts={rails} color="#b8c2c8"/></group>
 }
