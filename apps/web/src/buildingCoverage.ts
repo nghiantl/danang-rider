@@ -25,6 +25,7 @@ export function fillBuildingGaps(map:OSMMap):OSMMap {
  const ux=dx/len,uz=dz/len;
  for(let t=4;t<len-3;t+=6.8)for(const side of [-1,1])for(const layer of [0,1,2]){
  const offset=side*(road.width/2+11+layer*15),x=a.x+ux*t-uz*offset,z=a.z+uz*t+ux*offset;
+ if(map.bounds){const lo=project(map.bounds[3],map.bounds[0]),hi=project(map.bounds[1],map.bounds[2]);if(x<Math.min(lo.x,hi.x)+10||x>Math.max(lo.x,hi.x)-10||z<Math.min(lo.z,hi.z)+10||z>Math.max(lo.z,hi.z)-10)continue;}
  const local=near(x,z,65);
  const hash=Math.abs(Math.floor(x*173+z*97)),w=3.1,d=6.5+hash%2*.3;
  const outline=[[-w,-d],[w,-d],[w,d],[-w,d]].map(([u,v])=>({x:x+ux*u-uz*v,z:z+uz*u+ux*v}));
@@ -42,7 +43,8 @@ export function fillBuildingGaps(map:OSMMap):OSMMap {
  }if(candidates.length>=12000)break;
  }if(candidates.length>=12000)break;
  }
- const accepted=clearRoadBuildings(candidates,map.roads).filter(b=>candidates.includes(b));
+ const candidateSet=new Set(candidates);
+ const accepted=clearRoadBuildings(candidates,map.roads).filter(b=>candidateSet.has(b));
  console.info('[Rider building coverage]',{osm:originals.length,generated:accepted.length});
  return {...map,buildings:[...originals,...accepted]};
 }
