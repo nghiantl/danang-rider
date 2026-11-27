@@ -1,6 +1,7 @@
+import {LandmarkWater} from './LandmarkWater';
 import {coastalPalms} from './vegetationPlacement';
 import {Vegetation} from './Vegetation';
-import {useMemo,useRef} from 'react';
+import {useMemo,useRef,useEffect} from 'react';
 import {useFrame} from '@react-three/fiber';
 import * as THREE from 'three';
 import {type OSMMap,type Point} from './osm';
@@ -14,8 +15,9 @@ export function Beach({map,position,player}:{map:OSMMap;position:Point;player:Re
  const sand=useMemo(()=>strip(-28,0,coastStart,coastEnd),[]),sea=useMemo(()=>strip(0,1800,coastStart,coastEnd),[]);
  const foam=useRef<THREE.Group>(null);
  const palms=useMemo(()=>coastalPalms(map),[map]);
- const waves=useMemo(()=>[2,9,17].map(d=>strip(d,d+0.7,coastStart,coastEnd)),[]);
- useFrame(({clock})=>{if(foam.current)foam.current.position.x=Math.sin(clock.elapsedTime*0.8)*1.5});
+ const waves=useMemo(()=>[2,9,17].map(d=>strip(d,d+1.1,coastStart,coastEnd)),[]);
+ useFrame(({clock})=>{if(foam.current){const t=clock.elapsedTime;foam.current.children.forEach((child,i)=>{child.position.x=-((t*.8+i*2)%6);const mat=(child as THREE.Mesh).material as THREE.MeshStandardMaterial;mat.opacity=.15+.45*Math.sin(Math.PI*((t*.8+i*2)%6)/6)})}});
+ useEffect(()=>()=>{sand.dispose();sea.dispose();waves.forEach(g=>g.dispose())},[sand,sea,waves]);
  if(!enabled||!near)return null;
- return <group><mesh geometry={sand}><meshStandardMaterial color="#d8c39a"/></mesh><mesh geometry={sea}><meshStandardMaterial color="#247e9e" roughness={0.42}/></mesh><group ref={foam} position={[0,.025,0]}>{waves.map((g,i)=><mesh key={i} geometry={g}><meshStandardMaterial color="#c8e5e5" transparent opacity={.55}/></mesh>)}</group><Vegetation points={palms} player={player} palm/></group>
+ return <group><mesh geometry={sand}><meshStandardMaterial color="#e1cda7" roughness={1}/></mesh><LandmarkWater geometry={sea} sea/><group ref={foam} position={[0,.025,0]}>{waves.map((g,i)=><mesh key={i} geometry={g}><meshStandardMaterial color="#c8e5e5" transparent opacity={.55}/></mesh>)}</group><Vegetation points={palms} player={player} palm/></group>
 }
