@@ -6,7 +6,7 @@ import {buildGraph,missionPoints} from './navigation.ts';
 export type Point = { x: number; z: number };
 export type Road = { points: Point[]; width: number; name: string; kind?: string; oneway?: number; bridge?: boolean };
 export type Footprint = { x: number; z: number; halfX: number; halfZ: number; height: number; outline?: Point[]; kind?: string; name?:string };
-export type OSMMap = { roads: Road[]; buildings: Footprint[]; pickup: Point; delivery: Point; spawn: Point; extent: number; bounds?:number[] };
+export type OSMMap = { roads: Road[]; buildings: Footprint[]; pickup: Point; delivery: Point; spawn: Point; extent: number; bounds?:number[]; protectedAreas?:Point[][] };
 import {project} from './geoProjection.ts';
 export {project} from './geoProjection.ts';
 const BBOX = '16.0662,108.2191,16.0694,108.2225';
@@ -30,9 +30,12 @@ export function clipRoad(points:Point[],bounds:number[]):Point[][]{
 export function parseOSM(elements: Element[], bounds?:number[]): OSMMap {
   const roads: Road[] = [];
   let buildings: Footprint[] = [];
+  const protectedAreas:Point[][]=[];
   for (const element of elements) {
     if (element.type !== 'way' || !element.geometry || element.geometry.length < 2) continue;
     const points = element.geometry.map(p => project(p.lat,p.lon));
+    const tags=element.tags||{};
+    if(points.length>=3&&(/^(park|garden|playground|pitch|sports_centre|nature_reserve|recreation_ground)$/.test(tags.leisure||'')||/^(grass|recreation_ground|cemetery|forest|village_green)$/.test(tags.landuse||'')||/^(water|wood|wetland|beach)$/.test(tags.natural||'')||/^(school|hospital|place_of_worship|university)$/.test(tags.amenity||'')))protectedAreas.push(points);
     if (element.tags?.highway && WIDTH[element.tags.highway]) {
       const runs:Point[][]=bounds?clipRoad(points,bounds):[points];
       for(const points of runs)roads.push({ points, width: WIDTH[element.tags.highway], name: element.tags.name || 'Đường chưa có tên', kind:element.tags.highway, bridge:!!element.tags.bridge&&element.tags.bridge!=='no', oneway:element.tags.oneway==='-1'?-1:element.tags.oneway==='no'?0:['yes','1','true'].includes(element.tags.oneway)||element.tags.junction==='roundabout'?1:0 });
@@ -52,7 +55,7 @@ export function parseOSM(elements: Element[], bounds?:number[]): OSMMap {
   const mission=missionPoints(buildGraph(roads),p=>Math.abs(p.x)<extent-8&&Math.abs(p.z)<extent-8&&!buildings.some(b=>Math.abs(p.x-b.x)<b.halfX+2&&Math.abs(p.z-b.z)<b.halfZ+2));
   if(!mission)throw new Error('OSM roads insufficient for connected gameplay');
   const {spawn,pickup,delivery}=mission;
-  return {roads,buildings,pickup,delivery,spawn,extent,bounds};
+  return {roads,buildings,pickup,delivery,spawn,extent,bounds,protectedAreas};
 }
 // Try independent public Overpass instances. GET avoids POST preflight on mobile Safari.
 // Keep a short per-server timeout and report failures instead of silently hiding them.
