@@ -3,14 +3,15 @@ import {useFrame} from '@react-three/fiber';
 import {Text} from '@react-three/drei';
 import * as THREE from 'three';
 import type {OSMMap,Point} from './osm';
-import {streetShops,shopOpen,shopNames,type Shop} from './streetLife';
+import {streetShops,shopOpen,shopNames,registerRenderedShop,selectVisibleShops,type Shop} from './streetLife';
 import {graphics,pointGrid} from './performance';
 import {environmentAt,weatherVisual} from './environment';
 type Vec=[number,number,number];
 type Piece={p:Vec;s:Vec;c:string};
 function Boxes({items}:{items:Piece[]}){const ref=useRef<THREE.InstancedMesh>(null);useLayoutEffect(()=>{const mesh=ref.current;if(!mesh)return;const o=new THREE.Object3D();items.forEach(({p,s,c},i)=>{o.position.set(...p);o.scale.set(...s);o.updateMatrix();mesh.setMatrixAt(i,o.matrix);mesh.setColorAt(i,new THREE.Color(c))});mesh.instanceMatrix.needsUpdate=true;if(mesh.instanceColor)mesh.instanceColor.needsUpdate=true;mesh.computeBoundingSphere()},[items]);return <instancedMesh ref={ref} args={[undefined,undefined,items.length]}><boxGeometry/><meshStandardMaterial/></instancedMesh>}
 function Box({p,s,c}:Piece){return <mesh position={p}><boxGeometry args={s}/><meshStandardMaterial color={c}/></mesh>}
-function Stall({shop}:{shop:Shop}){
+function Stall({shop,map}:{shop:Shop;map:OSMMap}){
+ useLayoutEffect(()=>registerRenderedShop(map,shop),[map,shop]);
  const furniture=useRef<THREE.Group>(null),closed=useRef<THREE.Group>(null),guest=useRef<THREE.Group>(null),lamp=useRef<THREE.MeshStandardMaterial>(null);
  useFrame(({clock})=>{const e=environmentAt(new Date()),open=shopOpen(shop.kind,e.hour);if(furniture.current)furniture.current.visible=open;if(closed.current)closed.current.visible=!open;if(guest.current){guest.current.visible=open&&graphics.tier>0&&(shop.covered||weatherVisual.rain<.3);guest.current.rotation.y=Math.sin(clock.elapsedTime*.7)*.12}if(lamp.current)lamp.current.emissiveIntensity=open&&e.night?1.4:0});
  return <group position={[shop.x,.12,shop.z]} rotation={[0,shop.angle,0]}>
@@ -26,4 +27,4 @@ function Stall({shop}:{shop:Shop}){
  <group ref={guest} position={[.68,.28,0]}><Box p={[0,.35,0]} s={[.32,.48,.24]} c="#477b99"/><mesh position={[0,.72,0]}><sphereGeometry args={[.13,8,6]}/><meshStandardMaterial color="#c58d64"/></mesh><Box p={[-.15,.08,0]} s={[.3,.15,.25]} c="#34424d"/></group>
  </group>
 }
-export function StreetLife({map,position}:{map:OSMMap;position:Point}){const near=useMemo(()=>pointGrid(streetShops(map),80),[map]);const shops=useMemo(()=>near(position.x,position.z,100).sort((a,b)=>Math.hypot(a.x-position.x,a.z-position.z)-Math.hypot(b.x-position.x,b.z-position.z)).slice(0,graphics.tier===0?8:24),[near,Math.floor(position.x/20),Math.floor(position.z/20),graphics.tier]);return <group>{shops.map(s=><Stall key={s.x+':'+s.z} shop={s}/>)}</group>}
+export function StreetLife({map,position}:{map:OSMMap;position:Point}){const near=useMemo(()=>pointGrid(streetShops(map),80),[map]);const shops=useMemo(()=>selectVisibleShops(near(position.x,position.z,100),position,graphics.tier===0?8:24),[near,Math.floor(position.x/20),Math.floor(position.z/20),graphics.tier]);return <group>{shops.map(s=><Stall key={s.x+':'+s.z} shop={s} map={map}/>)}</group>}
