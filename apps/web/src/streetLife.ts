@@ -1,3 +1,4 @@
+import {recordStartup} from './startupProfiler.ts';
 import type {OSMMap,Point} from './osm.ts';
 import {pointGrid} from './performance.ts';
 import {segmentDistance} from './landmarkPlacement.ts';
@@ -5,7 +6,7 @@ export const shopNames=['CÀ PHÊ','MÌ QUẢNG','NƯỚC MÍA','BÁNH MÌ','QU�
 export type Shop=Point&{angle:number;kind:number;covered:boolean};
 export function shopOpen(kind:number,hour:number){return kind===4?(hour>=17||hour<3):kind===1?hour>=5&&hour<14:hour>=6&&hour<22}
 const cache=new WeakMap<OSMMap,Shop[]>();
-export function streetShops(map:OSMMap):Shop[]{const existing=cache.get(map);if(existing)return existing;const shops=generateShops(map);cache.set(map,shops);return shops;}
+export function streetShops(map:OSMMap):Shop[]{const existing=cache.get(map);if(existing)return existing;const started=performance.now();const shops=generateShops(map);recordStartup('Street shop generation','cpu',started);cache.set(map,shops);return shops;}
 const colliderCache=new WeakMap<OSMMap,ReturnType<typeof makeColliderGrid>>();
 function makeColliderGrid(map:OSMMap){return pointGrid(streetShops(map).map(s=>({x:s.x,z:s.z,radius:1.25,kind:'shop' as const,shopKind:s.kind})),40)}
 export function shopColliders(map:OSMMap,hour:number,position?:Point){if(!position)return streetShops(map).map(s=>({x:s.x,z:s.z,radius:shopOpen(s.kind,hour)?1.25:.65,kind:'shop' as const}));let grid=colliderCache.get(map);if(!grid){grid=makeColliderGrid(map);colliderCache.set(map,grid)}return grid(position.x,position.z,12).map(({x,z,shopKind})=>({x,z,radius:shopOpen(shopKind,hour)?1.25:.65,kind:'shop' as const}));}
