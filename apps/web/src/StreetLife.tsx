@@ -3,7 +3,7 @@ import {useFrame} from '@react-three/fiber';
 import {Text} from '@react-three/drei';
 import * as THREE from 'three';
 import type {OSMMap,Point} from './osm';
-import {streetShops,shopOpen,shopNames,type Shop} from './streetLife';
+import {streetShops,shopOpen,shopNames,selectVisibleShops,type Shop} from './streetLife';
 import {graphics,pointGrid} from './performance';
 import {environmentAt,weatherVisual} from './environment';
 type Vec=[number,number,number];
@@ -26,4 +26,4 @@ function Stall({shop}:{shop:Shop}){
  <group ref={guest} position={[.68,.28,0]}><Box p={[0,.35,0]} s={[.32,.48,.24]} c="#477b99"/><mesh position={[0,.72,0]}><sphereGeometry args={[.13,8,6]}/><meshStandardMaterial color="#c58d64"/></mesh><Box p={[-.15,.08,0]} s={[.3,.15,.25]} c="#34424d"/></group>
  </group>
 }
-export function StreetLife({map,position}:{map:OSMMap;position:Point}){const near=useMemo(()=>pointGrid(streetShops(map),80),[map]);const shops=useMemo(()=>near(position.x,position.z,100).sort((a,b)=>Math.hypot(a.x-position.x,a.z-position.z)-Math.hypot(b.x-position.x,b.z-position.z)).slice(0,graphics.tier===0?8:24),[near,Math.floor(position.x/20),Math.floor(position.z/20),graphics.tier]);return <group>{shops.map(s=><Stall key={s.x+':'+s.z} shop={s}/>)}</group>}
+export function StreetLife({map,position}:{map:OSMMap;position:Point}){const near=useMemo(()=>pointGrid(streetShops(map),80),[map]);const shops=useMemo(()=>selectVisibleShops(near(position.x,position.z,100),position,graphics.tier===0?8:24),[near,Math.floor(position.x/20),Math.floor(position.z/20),graphics.tier]);return <group>{shops.map(s=><Stall key={s.x+':'+s.z} shop={s}/>)}</group>}
