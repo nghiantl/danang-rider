@@ -1,8 +1,8 @@
 type Sample={name:string;kind:'cpu'|'wait'|'render';ms:number;startMs:number;endMs:number};
 const samples:Sample[]=[];const stalls:{startMs:number;endMs:number;delayMs:number}[]=[];let active=true;let source='unknown';let start=0;let total=0;let gap=0;let timer:ReturnType<typeof setInterval>|undefined;
 export const diagnosticSystems=['StreetLife','CitySigns','Landmarks','Beach','Traffic','Pedestrians','Shadows'] as const;
-export const diagnosticPreview=import.meta.env.VITE_VERCEL_ENV==='preview'||import.meta.env.DEV;
-export const disabledSystems=diagnosticPreview?diagnosticSystems.filter(s=>new URLSearchParams(location.search).getAll('skip').includes(s)):[];
+export const diagnosticPreview=import.meta.env?.VITE_VERCEL_ENV==='preview'||import.meta.env?.DEV===true;
+export const disabledSystems=diagnosticPreview&&typeof location!=='undefined'?diagnosticSystems.filter(s=>new URLSearchParams(location.search).getAll('skip').includes(s)):[];
 export function diagnosticEnabled(name:typeof diagnosticSystems[number]){return !disabledSystems.includes(name)}
 export function recordStartup(name:string,kind:Sample['kind'],since:number){if(active&&samples.length<2000){const now=performance.now();samples.push({name,kind,ms:Math.round(now-since),startMs:Math.round(since),endMs:Math.round(now)})}}
 export function startupSource(value:string){if(active)source=value}
