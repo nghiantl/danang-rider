@@ -30,3 +30,9 @@ function generateShops(map:OSMMap):Shop[]{
  }}}
  return out;
 }
+
+// Runtime colliders are registered only by committed stall geometry.
+const mountedShops=new WeakMap<OSMMap,Set<Shop>>();
+export function registerRenderedShop(map:OSMMap,shop:Shop){let set=mountedShops.get(map);if(!set){set=new Set();mountedShops.set(map,set)}set.add(shop);return ()=>{set.delete(shop)}}
+export function renderedShopColliders(map:OSMMap,hour:number,position:Point){return [...(mountedShops.get(map)??[])].filter(s=>Math.hypot(s.x-position.x,s.z-position.z)<12).map(s=>({x:s.x,z:s.z,radius:shopOpen(s.kind,hour)?1.25:.65,kind:'shop' as const}))}
+export function selectVisibleShops(shops:Shop[],position:Point,limit:number){const sorted=shops.slice().sort((a,b)=>Math.hypot(a.x-position.x,a.z-position.z)-Math.hypot(b.x-position.x,b.z-position.z));return sorted.filter((s,i)=>i<limit||Math.hypot(s.x-position.x,s.z-position.z)<45)}
